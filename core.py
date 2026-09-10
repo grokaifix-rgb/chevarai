@@ -25,6 +25,32 @@ CONFIG_FILE = os.path.join(BASE_DIR, "config.json")
 DATA_DIR = os.getenv("DATA_DIR", BASE_DIR)
 DATA_FILE = os.path.join(DATA_DIR, "data.json")
 
+# Birinchi ishga tushirish: Volume hali bo'sh bo'lsa va loyihada boshlang'ich
+# baza bo'lsa — uni ko'chiramiz (uy kompyuteridagi bazani serverga o'tkazish).
+_BOSHLANGICH = os.path.join(BASE_DIR, "boshlangich-data.json")
+
+
+def _bosh_bazami(yol):
+    """Volume'dagi baza umuman bo'shmi? (fayl yo'q yoki foydalanuvchi yo'q)"""
+    if not os.path.exists(yol):
+        return True
+    try:
+        with open(yol, "r", encoding="utf-8") as f:
+            d = json.load(f)
+        return not d.get("foydalanuvchilar") and not d.get("buyurtmalar")
+    except Exception:
+        return True
+
+
+if DATA_DIR != BASE_DIR and os.path.exists(_BOSHLANGICH) and _bosh_bazami(DATA_FILE):
+    try:
+        import shutil
+        os.makedirs(DATA_DIR, exist_ok=True)
+        shutil.copy(_BOSHLANGICH, DATA_FILE)
+        print("Boshlang'ich baza ko'chirildi: " + DATA_FILE, flush=True)
+    except Exception as _e:
+        print("Boshlang'ich bazani ko'chirib bo'lmadi: " + str(_e), flush=True)
+
 API = "https://api.telegram.org/bot{token}/{method}"
 
 

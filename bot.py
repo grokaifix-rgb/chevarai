@@ -851,6 +851,11 @@ def main():
         sys.exit(1)
     nom = me["result"].get("username")
     log("Bot ishga tushdi: @" + str(nom) + " · adminlar: " + str(ADMINLAR))
+    log("Baza: " + str(len(DATA["foydalanuvchilar"])) + " foydalanuvchi, "
+        + str(len(DATA["buyurtmalar"])) + " tikish buyurtmasi, "
+        + str(len(DATA["sotuvlar"])) + " do'kon buyurtmasi, "
+        + str(len(DATA["mahsulotlar"])) + " mahsulot, "
+        + str(len(DATA["dizaynlar"])) + " dizayn")
 
     api("setMyCommands", commands=[
         {"command": "start", "description": "Boshlash"},

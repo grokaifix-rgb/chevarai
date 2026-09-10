@@ -1,0 +1,10 @@
+# Serverga yuborilmaydigan fayllar
+config.json
+data.json
+data-zaxira-*.json
+bot.log
+__pycache__/
+*.pyc
+.git/
+*.command
+.DS_Store
