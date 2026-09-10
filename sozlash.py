@@ -86,8 +86,8 @@ def main():
     print("Bot AI'siz ham ishlaydi — ichki tahlil bilan savollar beradi.")
     print("Yanada aqlli suhbat uchun bepul Google Gemini kalitini ulash mumkin:")
     print("   https://aistudio.google.com/apikey  (bepul, kartasiz)")
-    print("Grok (xAI) kaliti bo'lsa: https://console.x.ai -> API Keys\n")
-    print("Variantlar: yoq / gemini / grok / openai / claude")
+    
+    print("Variantlar: yoq / gemini / openai / claude")
     cfg["ai_provider"] = sora("11) AI turi:", cfg.get("ai_provider", "yoq")).lower()
     if cfg["ai_provider"] not in ("yoq", "", "offline"):
         cfg["ai_key"] = sora("12) AI kaliti (API key):", cfg.get("ai_key", ""))
