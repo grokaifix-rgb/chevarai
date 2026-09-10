@@ -1,0 +1,16 @@
+{
+  "bot_token": "BU_YERGA_BOTFATHER_TOKENI",
+  "admin_ids": [5939503983, 8780230235],
+  "platforma_nomi": "Chevar AI",
+  "komissiya_foiz": 30,
+  "oldindan_tolov_foiz": 50,
+  "yetkazish_narx": 25000,
+  "bepul_yetkazish_chegara": 500000,
+  "karta_raqam": "0000 0000 0000 0000",
+  "karta_egasi": "Ism Familiya",
+  "aloqa_telefon": "+998910964410",
+  "aloqa_telegram": "@diumuser",
+  "ai_provider": "gemini",
+  "ai_key": "GOOGLE_AI_STUDIO_KALITI",
+  "ai_model": ""
+}

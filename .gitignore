@@ -1,0 +1,12 @@
+# Maxfiy — hech qachon GitHubga tushmasin
+config.json
+data.json
+data.json.tmp
+bot.log
+.env
+
+# Texnik
+__pycache__/
+*.pyc
+venv/
+.DS_Store
