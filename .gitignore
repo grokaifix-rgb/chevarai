@@ -2,6 +2,7 @@
 config.json
 data.json
 data.json.tmp
+data-zaxira-*.json
 bot.log
 .env
 
