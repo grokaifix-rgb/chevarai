@@ -42,6 +42,14 @@ SALOM = (
     "Quyidagi tugmalardan boshlang 👇"
 )
 
+ADMIN_SALOM = (
+    "🛠 <b>" + PLATFORMA + " — boshqaruv paneli</b>\n\n"
+    "Bu yerdan platformani boshqarasiz: mahsulot va dizayn qo'shish,\n"
+    "buyurtmalarni kuzatish, hunarmandlarni tasdiqlash, hisobot ko'rish.\n\n"
+    "Botni mijoz ko'zi bilan sinab ko'rmoqchi bo'lsangiz —\n"
+    "«👤 Mijoz rejimiga o'tish» tugmasini bosing."
+)
+
 MIJOZ_MENYU = menyu_tugmalari([
     ["🤖 AI bilan buyurtma"],
     ["👗 Dizaynlar", "🛍 Do'kon"],
@@ -55,9 +63,33 @@ USTA_MENYU = menyu_tugmalari([
     ["🛍 Do'kon", "🤖 AI bilan buyurtma"],
 ])
 
+# Admin uchun butunlay alohida panel — mijoz tugmalari aralashmaydi
+ADMIN_MENYU = menyu_tugmalari([
+    ["📊 Statistika"],
+    ["🤖 Tikish buyurtmalari", "🛍 Do'kon buyurtmalari"],
+    ["🛒 Mahsulot qo'shish", "👗 Dizayn qo'shish"],
+    ["🪡 Hunarmand arizalari", "📋 Ro'yxat"],
+    ["👤 Mijoz rejimiga o'tish"],
+])
+
+
+# Admin mijoz rejimiga o'tganda — mijoz tugmalari + panelga qaytish
+MIJOZ_MENYU_ADMIN = menyu_tugmalari([
+    ["🤖 AI bilan buyurtma"],
+    ["👗 Dizaynlar", "🛍 Do'kon"],
+    ["🛒 Savatim", "📦 Buyurtmalarim"],
+    ["🛠 Admin panelga qaytish"],
+])
+
 
 def menyu(uid):
-    return USTA_MENYU if profil(uid).get("rol") == "usta" else MIJOZ_MENYU
+    """Har bir rol o'z panelini ko'radi: admin / hunarmand / mijoz."""
+    p = profil(uid)
+    if admin_mi(uid):
+        return MIJOZ_MENYU_ADMIN if p.get("rejim") == "mijoz" else ADMIN_MENYU
+    if p.get("rol") == "usta":
+        return USTA_MENYU
+    return MIJOZ_MENYU
 
 
 YORDAM = (
@@ -609,7 +641,11 @@ def xabar(msg):
     if past.startswith("/start"):
         holat_tozala(uid)
         saqla()
-        yubor(uid, SALOM, menyu=menyu(uid))
+        if admin_mi(uid) and p.get("rejim") != "mijoz":
+            yubor(uid, ADMIN_SALOM, menyu=ADMIN_MENYU)
+            admin.panel(uid)
+        else:
+            yubor(uid, SALOM, menyu=menyu(uid))
         return
     if past.startswith("/bekor"):
         holat_tozala(uid)
@@ -622,10 +658,47 @@ def xabar(msg):
     if past.startswith("/yordam") or matn == "ℹ️ Yordam":
         yubor(uid, YORDAM, menyu=menyu(uid))
         return
-    if past.startswith("/admin"):
+    if past.startswith("/admin") or matn == "🛠 Admin panelga qaytish":
         if admin_mi(uid):
+            p["rejim"] = "admin"
+            holat_tozala(uid)
+            saqla()
+            yubor(uid, "👋 Boshqaruvga qaytdingiz.", menyu=ADMIN_MENYU)
             admin.panel(uid)
         return
+
+    # --- Admin panel tugmalari ---
+    if admin_mi(uid) and p.get("rejim") != "mijoz":
+        if matn == "👤 Mijoz rejimiga o'tish":
+            p["rejim"] = "mijoz"
+            holat_tozala(uid)
+            saqla()
+            yubor(uid, "👤 <b>Mijoz rejimi</b>\n\nEndi bot sizga oddiy mijoz "
+                       "ko'zi bilan ko'rinadi — buyurtma berib, do'konni sinab "
+                       "ko'rishingiz mumkin.\n\nQaytish: «🛠 Admin panelga qaytish»",
+                  menyu=MIJOZ_MENYU_ADMIN)
+            return
+        if matn == "📊 Statistika":
+            admin.panel(uid)
+            return
+        if matn == "🤖 Tikish buyurtmalari":
+            admin.buyurtmalar(uid)
+            return
+        if matn == "🛍 Do'kon buyurtmalari":
+            admin.sotuvlar(uid)
+            return
+        if matn == "🛒 Mahsulot qo'shish":
+            admin.qoshish_boshla(uid, "mahsulot")
+            return
+        if matn == "👗 Dizayn qo'shish":
+            admin.qoshish_boshla(uid, "dizayn")
+            return
+        if matn == "🪡 Hunarmand arizalari":
+            admin.ustalar(uid)
+            return
+        if matn == "📋 Ro'yxat":
+            admin.kontent(uid)
+            return
     if past.startswith("/ochir") and admin_mi(uid):
         admin.ochir(uid, matn[6:].strip())
         return
