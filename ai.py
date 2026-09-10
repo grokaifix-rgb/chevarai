@@ -266,14 +266,19 @@ def ai_tahlil(cfg, suhbat):
         })
         matn = j["content"][0]["text"]
 
-    else:  # openai va unga mos servislar (Groq, OpenRouter, ...)
-        model = model or "gpt-4o-mini"
-        base = cfg.get("ai_url") or "https://api.openai.com/v1/chat/completions"
+    else:  # openai-mos servislar: Grok (xAI), Groq, OpenRouter, OpenAI ...
+        if provider == "grok":
+            model = model or "grok-4-fast"
+            base = cfg.get("ai_url") or "https://api.x.ai/v1/chat/completions"
+        else:
+            model = model or "gpt-4o-mini"
+            base = cfg.get("ai_url") or "https://api.openai.com/v1/chat/completions"
         msgs = [{"role": "system", "content": TIZIM_PROMPT}]
         for x in suhbat:
             msgs.append({"role": ("user" if x["rol"] == "mijoz" else "assistant"),
                          "content": x["matn"]})
-        body = {"model": model, "messages": msgs, "temperature": 0.4}
+        body = {"model": model, "messages": msgs, "temperature": 0.4,
+                "response_format": {"type": "json_object"}}
         j = _post(base, body, {"Content-Type": "application/json",
                                "Authorization": "Bearer " + key})
         matn = j["choices"][0]["message"]["content"]
