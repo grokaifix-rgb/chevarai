@@ -1,0 +1,22 @@
+# VPS (Ubuntu/Debian) uchun: /etc/systemd/system/chevar-ai.service
+# Ishga tushirish:
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now chevar-ai
+#   sudo journalctl -u chevar-ai -f      (jurnalni ko'rish)
+
+[Unit]
+Description=Chevar AI Telegram bot
+After=network-online.target
+
+[Service]
+Type=simple
+User=chevar
+WorkingDirectory=/opt/chevar-ai
+Environment=DATA_DIR=/opt/chevar-ai/data
+EnvironmentFile=/opt/chevar-ai/.env
+ExecStart=/usr/bin/python3 /opt/chevar-ai/bot.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
