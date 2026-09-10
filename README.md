@@ -75,6 +75,11 @@ Muhit o'zgaruvchilari (Variables):
 ⚠️ `config.json` va `data.json` GitHubga tushmaydi (`.gitignore`). Serverda
 sozlamalar faqat muhit o'zgaruvchilaridan o'qiladi.
 
+## Server
+
+Railway'da `chevar-ai` xizmati sifatida ishlaydi. Bu repoga push qilinganda
+server avtomatik yangilanadi. Ma'lumotlar bazasi Volume ichida (`/data`).
+
 ## Batafsil qo'llanma
 
 O'zbek tilidagi to'liq qo'llanma: [QOLLANMA.md](QOLLANMA.md)
