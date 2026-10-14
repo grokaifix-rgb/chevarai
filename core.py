@@ -302,8 +302,27 @@ def mijoz_narxi(usta_narxi):
 
 
 def tasdiqlangan_ustalar():
+    """Buyurtma oladigan ustalar: tasdiqlangan, bloklanmagan, dam olishda emas."""
     return [uid for uid, p in DATA["foydalanuvchilar"].items()
-            if p.get("rol") == "usta" and p.get("tasdiq") and not p.get("bloklangan")]
+            if p.get("rol") == "usta" and p.get("tasdiq")
+            and not p.get("bloklangan") and not p.get("pauza")]
+
+
+def esc(matn):
+    """Foydalanuvchi yozgan matndagi < > & belgilarini xavfsiz qiladi
+    (aks holda Telegram xabarni rad etadi)."""
+    return (str(matn or "").replace("&", "&amp;")
+            .replace("<", "&lt;").replace(">", "&gt;"))
+
+
+def usta_reyting(uid):
+    """(o'rtacha baho, baholar soni, yakunlangan ishlar soni)"""
+    p = DATA["foydalanuvchilar"].get(str(uid), {})
+    baholar = p.get("baholar", [])
+    ort = (sum(baholar) / len(baholar)) if baholar else 0
+    yakun = sum(1 for b in DATA["buyurtmalar"].values()
+                if str(b.get("usta")) == str(uid) and b.get("holat") == "yakunlandi")
+    return ort, len(baholar), yakun
 
 
 def vaqt():

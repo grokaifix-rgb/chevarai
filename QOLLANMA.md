@@ -66,13 +66,24 @@ To'lov: karta → chek rasmi → admin tasdiqlaydi → 🚚 yo'lga chiqdi → �
 
 ---
 
+### Hunarmandning qo'shimcha imkoniyatlari
+- 🖼 **Portfolio** — 10 tagacha ish rasmi. Mijoz taklifni ko'rganda «Ishlarini ko'rish» tugmasi chiqadi
+- 💬 **Taklifga izoh** — narx va muddatdan keyin mijozga qisqa izoh yoziladi
+- ⭐️ **Reyting** — taklifda baho va bajarilgan ishlar soni ko'rinadi
+- ✉️ **Mijoz bilan yozishuv** — bot orqali, telefon raqam oshkor bo'lmaydi
+- 📸 **Tayyor ish rasmi** — «Tayyor bo'ldi» bosilganda kiyim rasmi mijozga boradi
+- ⏸ **Dam olish** — vaqtincha yangi buyurtma kelmaydi
+- ✏️ **Profilni tahrirlash** — «👤 Profilim» ichida
+
 ## 4. Admin nima qiladi
 
 `/admin` buyrug'i. **Bir nechta admin** bo'lishi mumkin — hammasiga bir xil
 xabar boradi.
 
 Panel tugmalari:
-- 🪡 **Hunarmand arizalari** — tasdiqlash / rad etish
+- 🪡 **Hunarmandlar** — har bir hunarmandning to'liq profili: ism (bosilsa Telegram
+  profili ochiladi), username, telefon, shahar, ixtisos, tajriba, reyting, takliflar,
+  bajarilgan ishlar, ishlab topgan puli, portfolio. Arizani tasdiqlash, bloklash
 - 🤖 **Tikish buyurtmalari** — faol buyurtmalar ro'yxati
 - 🛍 **Do'kon buyurtmalari** — to'lovni tasdiqlash, 🚚 yo'lga chiqdi, ✅ topshirildi
 - 👗 **Dizayn qo'shish** — nom, tavsif, mato, rang, narx, **rasm**

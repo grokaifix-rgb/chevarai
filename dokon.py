@@ -267,6 +267,23 @@ def sotuv_yarat(uid):
         yubor(uid, "Savat bo'sh.")
         return
 
+    # Rasmiylashtirish paytida zaxirani qayta tekshiramiz — savatga solingandan
+    # keyin boshqa mijoz sotib olgan bo'lishi mumkin.
+    yetmaydi = []
+    for x in savat:
+        m = DATA["mahsulotlar"].get(x["mahsulot"])
+        bor = int((m or {}).get("zaxira", {}).get(x["olcham"], 0))
+        if not m or not m.get("faol", True) or bor < int(x["soni"]):
+            yetmaydi.append(((m or {}).get("nom", "?"), x["olcham"], bor))
+    if yetmaydi:
+        holat_tozala(uid)
+        saqla()
+        yubor(uid, "😔 Kechirasiz, ba'zi mahsulotlar endi yetarli emas:\n"
+              + "\n".join("• " + n + " (" + o + ") — qolgan: " + str(b) for n, o, b in yetmaydi)
+              + "\n\nSavatni yangilab, qaytadan rasmiylashtiring.")
+        savat_korsat(uid)
+        return
+
     raqam = str(DATA["keyingi_sotuv"])
     DATA["keyingi_sotuv"] += 1
 
@@ -281,7 +298,7 @@ def sotuv_yarat(uid):
         mahsulotlar.append({"id": m["id"], "nom": m["nom"], "olcham": x["olcham"],
                             "soni": x["soni"], "narx": m.get("narx", 0), "summa": summa})
         # zaxiradan ayiramiz
-        m["zaxira"][x["olcham"]] = max(0, int(m["zaxira"][x["olcham"]]) - int(x["soni"]))
+        m["zaxira"][x["olcham"]] = int(m["zaxira"][x["olcham"]]) - int(x["soni"])
 
     usul = h.get("usul", "yetkazish")
     yetkazish = 0 if (jami >= BEPUL_CHEGARA or usul == "olib") else YETKAZISH_NARX
@@ -334,11 +351,29 @@ def sotuv_matni(s, ichki=False):
     return "\n".join(q)
 
 
+# Qaysi holatdan qaysiga o'tish mumkin (ikki marta bosish va tartibsizlikdan himoya)
+OTISHLAR = {
+    "tolangan": ("tolov_kutilmoqda", "tekshiruvda"),
+    "yolda": ("tolangan",),
+    "topshirildi": ("tolangan", "yolda"),
+    "bekor": ("tolov_kutilmoqda", "tekshiruvda", "tolangan"),
+}
+
+
 def sotuv_holat_ozgartir(raqam, yangi):
+    """True — holat o'zgardi; False — bu o'tish mumkin emas."""
     s = DATA["sotuvlar"].get(raqam)
-    if not s:
-        return
+    if not s or s["holat"] not in OTISHLAR.get(yangi, ()):
+        return False
     s["holat"] = yangi
+    if yangi == "bekor" and not s.get("zaxira_qaytdi"):
+        # Bekor qilinganda mahsulotlar zaxiraga qaytadi
+        for x in s.get("mahsulotlar", []):
+            m = DATA["mahsulotlar"].get(x["id"])
+            if m:
+                m.setdefault("zaxira", {})[x["olcham"]] = \
+                    int(m["zaxira"].get(x["olcham"], 0)) + int(x["soni"])
+        s["zaxira_qaytdi"] = True
     saqla()
     xabarlar = {
         "tolangan": "✅ To'lovingiz tasdiqlandi! Buyurtmangiz tayyorlanmoqda.",
@@ -348,6 +383,7 @@ def sotuv_holat_ozgartir(raqam, yangi):
     }
     if yangi in xabarlar:
         yubor(s["mijoz"], "#" + raqam + " — " + xabarlar[yangi])
+    return True
 
 
 def mening_xaridlarim(uid):

@@ -21,11 +21,13 @@ import traceback
 import ai
 import admin
 import dokon
+import usta
 from core import (ADMINLAR, ALOQA_TEL, ALOQA_TG, BOSH_ADMIN, DATA, KARTA,
                   KARTA_EGASI, OLDINDAN, PLATFORMA, TOKEN, adminlarga, admin_mi,
                   api, holat, holat_ol, holat_tozala, log, menyu_tugmalari,
                   mijoz_narxi, profil, pul, saqla, tahrirla, tasdiqlangan_ustalar,
-                  tugmalar, vaqt, yaxlit, yubor, javob_ber, AI_CFG)
+                  tugmalar, vaqt, yaxlit, yubor, javob_ber, AI_CFG,
+                  esc, rasm_yubor)
 
 
 # =====================  Menyular  =====================
@@ -60,6 +62,7 @@ MIJOZ_MENYU = menyu_tugmalari([
 USTA_MENYU = menyu_tugmalari([
     ["📋 Yangi buyurtmalar"],
     ["🧾 Mening ishlarim", "👤 Profilim"],
+    ["🖼 Portfolio", "⏸ Dam olish"],
     ["🛍 Do'kon", "🤖 AI bilan buyurtma"],
 ])
 
@@ -68,7 +71,7 @@ ADMIN_MENYU = menyu_tugmalari([
     ["📊 Statistika"],
     ["🤖 Tikish buyurtmalari", "🛍 Do'kon buyurtmalari"],
     ["🛒 Mahsulot qo'shish", "👗 Dizayn qo'shish"],
-    ["🪡 Hunarmand arizalari", "📋 Ro'yxat"],
+    ["🪡 Hunarmandlar", "📋 Ro'yxat"],
     ["👤 Mijoz rejimiga o'tish"],
 ])
 
@@ -349,9 +352,27 @@ def kun_qabul(uid, matn):
         yubor(uid, "Bu buyurtma allaqachon yopilgan.", menyu=USTA_MENYU)
         return
 
+    holat(uid, "narx_izoh", narx_kun=int(kun))
+    saqla()
+    yubor(uid, "💬 Mijozga qisqa izoh yozing (masalan: «Matoni o'zim topib beraman, "
+               "astarli qilaman»).\nIzohsiz yuborish uchun «-» yozing.")
+
+
+def izoh_qabul(uid, matn):
+    h = holat_ol(uid)
+    raqam = h.get("narx_raqam")
+    b = DATA["buyurtmalar"].get(raqam)
+    if not b or b["holat"] != "yangi":
+        holat_tozala(uid)
+        saqla()
+        yubor(uid, "Bu buyurtma allaqachon yopilgan.", menyu=USTA_MENYU)
+        return
+
     usta_narx = h["narx_qiymat"]
+    kun = str(h.get("narx_kun", 0))
+    izoh = "" if matn.strip() == "-" else matn.strip()[:300]
     b["takliflar"][str(uid)] = {"narx": usta_narx, "mijoz_narx": mijoz_narxi(usta_narx),
-                                "kun": int(kun), "vaqt": vaqt()}
+                                "kun": int(kun), "izoh": izoh, "vaqt": vaqt()}
     holat_tozala(uid)
     saqla()
 
@@ -360,21 +381,29 @@ def kun_qabul(uid, matn):
           "Mijoz tanlasa — darhol xabar beramiz.", menyu=USTA_MENYU)
 
     p = profil(uid)
+    qatorlar = [[("✅ Qabul qilaman", "tanla_" + raqam + "_" + str(uid))]]
+    if p.get("portfolio"):
+        qatorlar.append([("🖼 Ishlarini ko'rish (" + str(len(p["portfolio"])) + ")",
+                          "pf_" + str(uid))])
+    qatorlar.append([("👀 Boshqa takliflarni kutaman", "kut_" + raqam)])
     yubor(b["mijoz"],
           "💰 <b>#" + raqam + " uchun yangi taklif!</b>\n\n"
           "🪡 Hunarmand: <b>" + (p.get("ism") or "Hunarmand") + "</b>"
           + (" (" + p.get("shahar", "") + ")" if p.get("shahar") else "") + "\n"
           "🧵 Ixtisos: " + (p.get("ixtisos") or "-") + "\n"
+          + ("⏳ Tajriba: " + str(p.get("tajriba")) + " yil\n" if p.get("tajriba") else "")
+          + usta.reyting_matni(uid) + "\n\n"
           "💵 Narx: <b>" + pul(mijoz_narxi(usta_narx)) + "</b>\n"
-          "🗓 Muddat: <b>" + kun + " kun</b>\n\nBu taklifni qabul qilasizmi?",
-          kb=tugmalar([
-              [("✅ Qabul qilaman", "tanla_" + raqam + "_" + str(uid))],
-              [("👀 Boshqa takliflarni kutaman", "kut_" + raqam)],
-          ]))
+          "🗓 Muddat: <b>" + kun + " kun</b>"
+          + ("\n💬 <i>" + izoh + "</i>" if izoh else "")
+          + "\n\nBu taklifni qabul qilasizmi?",
+          kb=tugmalar(qatorlar))
 
 
 def usta_tanlandi(mijoz_uid, raqam, usta_uid):
     b = DATA["buyurtmalar"].get(raqam)
+    if b and str(b["mijoz"]) != str(mijoz_uid):
+        return
     if not b or b["holat"] != "yangi":
         yubor(mijoz_uid, "Bu buyurtma bo'yicha hunarmand allaqachon tanlangan.")
         return
@@ -403,6 +432,7 @@ def usta_tanlandi(mijoz_uid, raqam, usta_uid):
           "Karta: <code>" + KARTA + "</code>\n"
           "Egasi: " + KARTA_EGASI + "\n\nTo'lagach, chek rasmini yuboring 👇",
           kb=tugmalar([[("📸 To'lov chekini yuborish", "chek_" + raqam)],
+                       [("✉️ Hunarmandga yozish", "yoz_" + raqam)],
                        [("❌ Buyurtmani bekor qilish", "bekor_" + raqam)]]))
 
     yubor(int(usta_uid),
@@ -410,7 +440,8 @@ def usta_tanlandi(mijoz_uid, raqam, usta_uid):
           + buyurtma_matni(b, ichki=True) +
           "\n💵 Sizga to'lanadi: <b>" + pul(b["usta_narx"]) + "</b>\n"
           "🗓 Muddat: " + str(taklif["kun"]) + " kun\n\n"
-          "⏳ Mijoz oldindan to'lov qilgach, ishni boshlashga signal beramiz.")
+          "⏳ Mijoz oldindan to'lov qilgach, ishni boshlashga signal beramiz.",
+          kb=tugmalar([[("✉️ Mijozga yozish", "yoz_" + raqam)]]))
 
     for u in b["takliflar"]:
         if str(u) != str(usta_uid):
@@ -473,9 +504,14 @@ def sotuv_chek_qabul(uid, msg):
 
 
 def tolov_tasdiq(raqam, tur):
+    """True — tasdiqlandi; False — holat mos emas (masalan ikkinchi marta bosildi)."""
     b = DATA["buyurtmalar"].get(raqam)
     if not b:
-        return
+        return False
+    if tur == "oldindan" and b["holat"] != "tasdiqlangan":
+        return False
+    if tur != "oldindan" and b["holat"] != "tayyor":
+        return False
     if tur == "oldindan":
         b["holat"] = "tikilmoqda"
         b["tolov"]["holat"] = "oldindan_tolangan"
@@ -487,7 +523,8 @@ def tolov_tasdiq(raqam, tur):
             yubor(b["usta"], "🟢 <b>#" + raqam + " — ishni boshlang!</b>\n\n"
                              "Mijoz oldindan to'lovni amalga oshirdi.\n"
                              + buyurtma_matni(b, ichki=True),
-                  kb=tugmalar([[("✅ Tayyor bo'ldi", "tayyor_" + raqam)]]))
+                  kb=tugmalar([[("✅ Tayyor bo'ldi", "tayyor_" + raqam)],
+                               [("✉️ Mijozga yozish", "yoz_" + raqam)]]))
     else:
         b["holat"] = "yakunlandi"
         b["tolov"]["holat"] = "toliq_tolangan"
@@ -499,12 +536,16 @@ def tolov_tasdiq(raqam, tur):
         if b.get("usta"):
             yubor(b["usta"], "💰 <b>#" + raqam + "</b> yakunlandi. Sizning ulushingiz: <b>"
                   + pul(b["usta_narx"]) + "</b>\nHisob-kitob administrator orqali.")
+    return True
 
 
-def ish_tayyor(usta_uid, raqam):
+def ish_tayyor(usta_uid, raqam, rasm=""):
     b = DATA["buyurtmalar"].get(raqam)
-    if not b or str(b.get("usta")) != str(usta_uid):
+    if not b or str(b.get("usta")) != str(usta_uid) or b["holat"] != "tikilmoqda":
         return
+    if rasm:
+        b["tayyor_rasm"] = rasm
+        rasm_yubor(b["mijoz"], rasm, "📸 Tayyor kiyimingiz (#" + raqam + ")")
     b["holat"] = "tayyor"
     b["tarix"].append(vaqt() + " — hunarmand ishni tayyor dedi")
     saqla()
@@ -582,6 +623,14 @@ def usta_ishlari(uid):
             jami += b["usta_narx"]
     q.append("\n💰 Yakunlangan ishlardan jami: <b>" + pul(jami) + "</b>")
     yubor(uid, "\n".join(q), menyu=USTA_MENYU)
+    for b in royxat:
+        if b["holat"] in ("tasdiqlangan", "tikilmoqda", "tayyor"):
+            qatorlar = [[("✉️ Mijozga yozish", "yoz_" + b["raqam"])]]
+            if b["holat"] == "tikilmoqda":
+                qatorlar.insert(0, [("✅ Tayyor bo'ldi", "tayyor_" + b["raqam"])])
+            yubor(uid, "🔧 Faol ish:\n" + buyurtma_matni(b, ichki=True)
+                  + "\n📌 " + HOLAT_NOMI.get(b["holat"], b["holat"]),
+                  kb=tugmalar(qatorlar))
 
 
 def usta_profil(uid):
@@ -595,9 +644,12 @@ def usta_profil(uid):
           "Ixtisos: " + (p.get("ixtisos") or "-") + "\n"
           "Tajriba: " + str(p.get("tajriba") or "-") + " yil\n"
           "Telefon: " + (p.get("tel") or "-") + "\n"
-          "Holat: " + ("✅ tasdiqlangan" if p.get("tasdiq") else "⏳ kutilmoqda") + "\n"
-          "Reyting: " + (("⭐️ %.1f (%d baho)" % (ort, len(baholar))) if baholar else "hali yo'q"),
+          "Holat: " + ("✅ tasdiqlangan" if p.get("tasdiq") else "⏳ kutilmoqda")
+          + (" · ⏸ dam olishda" if p.get("pauza") else "") + "\n"
+          + usta.reyting_matni(uid) + "\n"
+          "Portfolio: " + str(len(p.get("portfolio", []))) + " ta rasm",
           menyu=USTA_MENYU)
+    usta.tahrir_menyu(uid)
 
 
 # =====================  XABARLARNI MARSHRUTLASH  =====================
@@ -610,8 +662,10 @@ def xabar(msg):
     if p.get("bloklangan"):
         return
     if not p.get("ism"):
-        p["ism"] = (msg["from"].get("first_name", "") + " "
-                    + msg["from"].get("last_name", "")).strip()
+        p["ism"] = esc((msg["from"].get("first_name", "") + " "
+                        + msg["from"].get("last_name", "")).strip())
+    if msg["from"].get("username"):
+        p["username"] = msg["from"]["username"]
 
     h = holat_ol(uid)
     bosqich = h.get("bosqich", "")
@@ -628,10 +682,23 @@ def xabar(msg):
         if bosqich == "qosh_rasm" and admin_mi(uid):
             admin.rasm_qabul(uid, file_id)
             return
+        if bosqich == "portfolio" and file_id:
+            usta.portfolio_rasm(uid, file_id, msg.get("caption", ""))
+            return
+        if bosqich == "tayyor_rasm" and file_id:
+            raqam = h.get("tayyor_raqam")
+            holat_tozala(uid)
+            saqla()
+            ish_tayyor(uid, raqam, file_id)
+            return
+        if bosqich == "yoz" and "photo" in msg:
+            usta.yozish_yubor(uid, msg)
+            return
 
-    matn = (msg.get("text") or "").strip()
+    # Foydalanuvchi matnidagi < > & belgilar xabarni buzmasligi uchun
+    matn = esc((msg.get("text") or "").strip())
     if not matn:
-        if bosqich in ("chek", "schek", "qosh_rasm"):
+        if bosqich in ("chek", "schek", "qosh_rasm", "portfolio", "tayyor_rasm"):
             yubor(uid, "📸 Iltimos, <b>rasm</b> yuboring.")
         return
 
@@ -655,6 +722,27 @@ def xabar(msg):
     if past.startswith("/otkaz") and bosqich == "qosh_rasm":
         admin.rasm_qabul(uid, "")
         return
+    if past.startswith("/otkaz") and bosqich == "tayyor_rasm":
+        raqam = h.get("tayyor_raqam")
+        holat_tozala(uid)
+        saqla()
+        ish_tayyor(uid, raqam)
+        return
+    if past.startswith("/tayyor") and bosqich == "portfolio":
+        holat_tozala(uid)
+        saqla()
+        yubor(uid, "✅ Portfolio saqlandi.", menyu=USTA_MENYU)
+        usta.portfolio_menyu(uid)
+        return
+
+    # --- Hunarmand tugmalari ---
+    if p.get("rol") == "usta":
+        if matn == "🖼 Portfolio":
+            usta.portfolio_menyu(uid)
+            return
+        if matn == "⏸ Dam olish":
+            usta.pauza_almashtir(uid)
+            return
     if past.startswith("/yordam") or matn == "ℹ️ Yordam":
         yubor(uid, YORDAM, menyu=menyu(uid))
         return
@@ -693,8 +781,8 @@ def xabar(msg):
         if matn == "👗 Dizayn qo'shish":
             admin.qoshish_boshla(uid, "dizayn")
             return
-        if matn == "🪡 Hunarmand arizalari":
-            admin.ustalar(uid)
+        if matn in ("🪡 Hunarmandlar", "🪡 Hunarmand arizalari"):
+            admin.hunarmandlar(uid)
             return
         if matn == "📋 Ro'yxat":
             admin.kontent(uid)
@@ -771,6 +859,17 @@ def xabar(msg):
         h["tel"] = matn.replace(" ", "")
         saqla()
         dokon.sotuv_yarat(uid)
+    elif bosqich == "narx_izoh":
+        izoh_qabul(uid, matn)
+    elif bosqich == "yoz":
+        usta.yozish_yubor(uid, {"text": msg.get("text", "")})
+    elif bosqich == "usta_tahrir":
+        usta.tahrir_qabul(uid, matn)
+    elif bosqich in ("portfolio", "tayyor_rasm"):
+        yubor(uid, "📸 Iltimos, rasm yuboring (tugatish: /tayyor, o'tkazish: /otkaz).")
+    elif admin_mi(uid) and p.get("rejim") != "mijoz":
+        yubor(uid, "Pastdagi panel tugmalaridan foydalaning. Buyurtmani sinab "
+                   "ko'rish uchun «👤 Mijoz rejimiga o'tish».", menyu=ADMIN_MENYU)
     elif len(matn) > 8:
         # Bosqich yo'q: erkin matnni buyurtma deb qabul qilamiz
         holat(uid, "suhbat", suhbat=[], buyurtma={}, savollar=0)
@@ -824,7 +923,24 @@ def tugma(cq):
         yubor(uid, "👌 Yaxshi, boshqa takliflar kelishini kutamiz.")
         return
     if data.startswith("tayyor_"):
-        ish_tayyor(uid, data[7:])
+        usta.tayyor_boshla(uid, data[7:])
+        return
+    if data.startswith("yoz_"):
+        usta.yozish_boshla(uid, data[4:])
+        return
+    if data == "pf_qosh":
+        usta.portfolio_qosh_boshla(uid)
+        return
+    if data == "pf_toza":
+        profil(uid)["portfolio"] = []
+        saqla()
+        yubor(uid, "🗑 Portfolio tozalandi.")
+        return
+    if data.startswith("pf_"):
+        usta.portfolio_korsat(uid, data[3:])
+        return
+    if data.startswith("ut_"):
+        usta.tahrir_boshla(uid, data[3:])
         return
 
     # --- To'lov ---
@@ -835,6 +951,10 @@ def tugma(cq):
         chek_sora(uid, data[5:], "oldindan")
         return
     if data.startswith("schek_"):
+        s_ = DATA["sotuvlar"].get(data[6:])
+        if not s_ or str(s_["mijoz"]) != str(uid) or s_["holat"] != "tolov_kutilmoqda":
+            yubor(uid, "Bu buyurtma uchun to'lov kutilmayapti.")
+            return
         holat(uid, "schek", schek_raqam=data[6:])
         saqla()
         yubor(uid, "📸 To'lov chekining rasmini yuboring.")
@@ -843,18 +963,23 @@ def tugma(cq):
     if data.startswith("bekor_"):
         raqam = data[6:]
         b = DATA["buyurtmalar"].get(raqam)
-        if b and str(b["mijoz"]) == str(uid) and b["holat"] in ("yangi", "tasdiqlangan"):
+        if (b and str(b["mijoz"]) == str(uid) and b["holat"] in ("yangi", "tasdiqlangan")
+                and not str(b["tolov"].get("holat", "")).endswith("tekshiruvda")):
             b["holat"] = "bekor"
             saqla()
             yubor(uid, "❌ Buyurtma #" + raqam + " bekor qilindi.", menyu=menyu(uid))
             if b.get("usta"):
                 yubor(b["usta"], "ℹ️ Mijoz #" + raqam + " buyurtmasini bekor qildi.")
+        elif b and str(b["mijoz"]) == str(uid):
+            yubor(uid, "Bu buyurtmani endi bekor qilib bo'lmaydi (to'lov tekshirilmoqda "
+                       "yoki ish boshlangan). Savol bo'lsa: " + ALOQA_TG)
         return
 
     if data.startswith("baho_"):
         _, raqam, ball = data.split("_")
         b = DATA["buyurtmalar"].get(raqam)
-        if b and b.get("usta"):
+        if (b and b.get("usta") and str(b["mijoz"]) == str(uid)
+                and b["holat"] == "yakunlandi" and not b.get("baho")):
             profil(b["usta"]).setdefault("baholar", []).append(int(ball))
             b["baho"] = int(ball)
             saqla()
