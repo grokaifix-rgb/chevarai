@@ -44,7 +44,7 @@ def panel(uid):
           "   Dizayn namunalari: " + str(len(DATA["dizaynlar"])) + "\n\n"
           "📊 Komissiya: " + str(int(KOMISSIYA)) + "%",
           kb=tugmalar([
-              [("🪡 Hunarmandlar", "a_ustalar")],
+              [("🪡 Hunarmandlar", "a_ustalar"), ("👥 Foydalanuvchilar", "a_foyd")],
               [("🤖 Tikish buyurtmalari", "a_buyurtma"),
                ("🛍 Do'kon buyurtmalari", "a_sotuv")],
               [("👗 Dizayn qo'shish", "a_dizayn_qosh")],
@@ -121,6 +121,104 @@ def hunarmandlar(uid):
         yubor(uid, usta_kartasi(u, p), kb=tugmalar(qatorlar))
 
 
+# =====================  Foydalanuvchilar (mijozlar)  =====================
+
+TIL_BELGI = {"uz": "🇺🇿", "en": "🇬🇧", "kaa": "🏳️"}
+
+
+def mijoz_kartasi(u, p):
+    """Mijozning to'liq profili — admin uchun."""
+    tikish = [b for b in DATA["buyurtmalar"].values() if str(b.get("mijoz")) == str(u)]
+    xarid = [x for x in DATA["sotuvlar"].values() if str(x.get("mijoz")) == str(u)]
+    sarf = (sum(b.get("umumiy_narx", 0) for b in tikish if b.get("holat") == "yakunlandi")
+            + sum(x.get("umumiy", 0) for x in xarid if x.get("holat") in ("tolangan", "yolda", "topshirildi")))
+    faol = sum(1 for b in tikish if b.get("holat") not in ("yakunlandi", "bekor"))
+    tel = p.get("tel") or next((b.get("mijoz_tel") for b in reversed(tikish) if b.get("mijoz_tel")), "") \
+        or next((x.get("tel") for x in reversed(xarid) if x.get("tel")), "")
+    manzil = p.get("manzil") or next((x.get("manzil") for x in reversed(xarid) if x.get("manzil")), "")
+    savat = sum(int(x.get("soni", 0)) for x in DATA["savatlar"].get(str(u), []))
+    rol = {"usta": "🪡 hunarmand", "mijoz": "👤 mijoz"}.get(p.get("rol"), p.get("rol") or "-")
+    if admin_mi(u):
+        rol = "🛠 admin"
+    return ("👤 <b><a href=\"tg://user?id=" + str(u) + "\">" + (p.get("ism") or "Ismsiz") + "</a></b>\n"
+            + ("✈️ @" + p["username"] + "\n" if p.get("username") else "")
+            + "📞 " + (tel or "—") + "\n"
+            + ("📍 " + manzil + "\n" if manzil else "")
+            + "🌐 Til: " + TIL_BELGI.get(p.get("til") or "uz", "") + " " + (p.get("til") or "uz") + "\n"
+            "🏷 Rol: " + rol + ("  ·  🚫 bloklangan" if p.get("bloklangan") else "") + "\n"
+            "📅 Qo'shilgan: " + (p.get("qoshildi") or "—") + "\n"
+            "🕒 Oxirgi faollik: " + (p.get("oxirgi") or "—") + "\n"
+            "🤖 Tikish buyurtmalari: " + str(len(tikish)) + " (faol: " + str(faol) + ")\n"
+            "🛍 Do'kon xaridlari: " + str(len(xarid)) + "\n"
+            "🛒 Savatda: " + str(savat) + " ta\n"
+            "💰 Jami to'lagan: " + pul(sarf) + "\n"
+            "🆔 <code>" + str(u) + "</code>")
+
+
+def _mijoz_tugmalari(u, p):
+    q = []
+    if not admin_mi(u):
+        q.append([("✅ Blokdan chiqarish", "fblok_" + u) if p.get("bloklangan")
+                  else ("🚫 Bloklash", "fblok_" + u)])
+    return tugmalar(q) if q else None
+
+
+def foydalanuvchilar(uid, sahifa=0):
+    royxat = [(u, p) for u, p in DATA["foydalanuvchilar"].items() if p.get("rol") != "usta"]
+    if not royxat:
+        yubor(uid, "👥 Hali foydalanuvchi yo'q.")
+        return
+    royxat.sort(key=lambda x: x[1].get("oxirgi") or x[1].get("qoshildi") or "", reverse=True)
+    jami = len(royxat)
+    tillar = {}
+    for _, p in royxat:
+        tillar[p.get("til") or "uz"] = tillar.get(p.get("til") or "uz", 0) + 1
+    boshi = sahifa * 10
+    qism = royxat[boshi:boshi + 10]
+    q = ["👥 <b>Foydalanuvchilar: " + str(jami) + " ta</b>  ("
+         + ", ".join(TIL_BELGI.get(k, k) + " " + str(v) for k, v in tillar.items()) + ")",
+         "<i>Oxirgi faollik bo'yicha. Batafsil ko'rish uchun ismni bosing.\n"
+         "Qidirish: /topish ism, @username, telefon yoki ID</i>", ""]
+    qatorlar = []
+    for i, (u, p) in enumerate(qism, boshi + 1):
+        nb = sum(1 for b in DATA["buyurtmalar"].values() if str(b.get("mijoz")) == u) \
+            + sum(1 for x in DATA["sotuvlar"].values() if str(x.get("mijoz")) == u)
+        q.append(str(i) + ". " + (p.get("ism") or "Ismsiz")
+                 + (" (@" + p["username"] + ")" if p.get("username") else "")
+                 + " " + TIL_BELGI.get(p.get("til") or "uz", "")
+                 + (" · 📦 " + str(nb) if nb else "") + (" · 🚫" if p.get("bloklangan") else ""))
+        qatorlar.append([(str(i) + ". " + (p.get("ism") or "Ismsiz")[:28], "fk_" + u)])
+    nav = []
+    if sahifa > 0:
+        nav.append(("⬅️ Oldingi", "fsah_" + str(sahifa - 1)))
+    if boshi + 10 < jami:
+        nav.append(("Keyingi ➡️", "fsah_" + str(sahifa + 1)))
+    if nav:
+        qatorlar.append(nav)
+    yubor(uid, "\n".join(q), kb=tugmalar(qatorlar))
+
+
+def topish(uid, soz):
+    soz = soz.strip().lstrip("@").lower()
+    if not soz:
+        yubor(uid, "Qidirish: /topish ism, @username, telefon yoki ID")
+        return
+    topildi = []
+    for u, p in DATA["foydalanuvchilar"].items():
+        joylar = [u, p.get("ism", ""), p.get("username", ""), p.get("tel", "")]
+        if any(soz in str(x).lower().replace(" ", "") for x in joylar if x):
+            topildi.append((u, p))
+    if not topildi:
+        yubor(uid, "🔍 «" + soz + "» bo'yicha hech kim topilmadi.")
+        return
+    yubor(uid, "🔍 Topildi: " + str(len(topildi)) + " ta")
+    for u, p in topildi[:10]:
+        if p.get("rol") == "usta":
+            yubor(uid, usta_kartasi(u, p))
+        else:
+            yubor(uid, mijoz_kartasi(u, p), kb=_mijoz_tugmalari(u, p))
+
+
 def buyurtmalar(uid):
     faol = [b for b in DATA["buyurtmalar"].values()
             if b["holat"] not in ("yakunlandi", "bekor")]
@@ -195,6 +293,8 @@ def ochir(uid, kod):
 DIZAYN_SAVOL = [
     ("nom", "👗 Dizayn nomi? (masalan: «Adras milliy ko'ylak — Marg'ilon»)"),
     ("tavsif", "📝 Qisqacha tavsif? (yo'q bo'lsa «-»)"),
+    ("kategoriya", "📂 Bo'lim? (masalan: Ko'ylaklar / Nimchalar / Kurtka va chapanlar / "
+                   "Sumkalar / Bosh kiyimlar)"),
     ("mato", "🧵 Qanday matodan? (masalan: adras)"),
     ("rang", "🎨 Rangi? (yo'q bo'lsa «-»)"),
     ("narx", "💵 Taxminiy narx (faqat son, bilmasangiz 0):"),
@@ -294,7 +394,9 @@ def tugma(uid, data, message_id):
     if not admin_mi(uid):
         return False
 
-    if data == "a_ustalar":
+    if data == "a_foyd":
+        foydalanuvchilar(uid)
+    elif data == "a_ustalar":
         hunarmandlar(uid)
     elif data == "a_buyurtma":
         buyurtmalar(uid)
@@ -318,6 +420,21 @@ def tugma(uid, data, message_id):
         yubor(int(u), "🎉 <b>Tabriklaymiz!</b> Siz hunarmand sifatida tasdiqlandingiz.\n\n"
                       "Endi yangi buyurtmalar sizga avtomatik keladi.",
               menyu=bot.USTA_MENYU)
+
+    elif data.startswith("fsah_"):
+        foydalanuvchilar(uid, int(data[5:]))
+    elif data.startswith("fk_"):
+        u = data[3:]
+        p = DATA["foydalanuvchilar"].get(u)
+        if p:
+            yubor(uid, mijoz_kartasi(u, p), kb=_mijoz_tugmalari(u, p))
+    elif data.startswith("fblok_"):
+        u = data[6:]
+        if not admin_mi(u):
+            p = profil(u)
+            p["bloklangan"] = not p.get("bloklangan")
+            saqla()
+            tahrirla(uid, message_id, mijoz_kartasi(u, p), kb=_mijoz_tugmalari(u, p))
 
     elif data.startswith("ublok_"):
         u = data[6:]

@@ -34,7 +34,10 @@ QOSHIMCHA = [
 # =====================  Kalit so'zlar lug'ati  =====================
 
 KIYIM_SOZLAR = {
-    "ko'ylak": ["ko'ylak", "koylak", "kuylak", "платье", "dress"],
+    "ko'ylak": ["ko'ylak", "koylak", "kuylak", "платье", "dress", "kóylek", "koylek", "gown"],
+    "nimcha": ["nimcha", "vest", "jilet", "waistcoat"],
+    "kurtka": ["kurtka", "jacket", "kimono", "куртка"],
+    "sumka": ["sumka", "bag", "handbag", "сумка"],
     "chapan": ["chapan", "to'n", "ton ", "khalat", "xalat"],
     "yaktak": ["yaktak", "yakhtak"],
     "kostyum": ["kostyum", "kostum", "kastyum", "pidjak", "костюм", "suit"],
@@ -48,7 +51,7 @@ KIYIM_SOZLAR = {
 }
 
 MATO_SOZLAR = {
-    "adras": ["adras", "адрас"],
+    "adras": ["adras", "адрас", "ikat"],
     "atlas": ["atlas", "xonatlas", "hon atlas", "атлас"],
     "shoyi": ["shoyi", "shohi", "shoxi", "шойи"],
     "ipak": ["ipak", "shelk", "шелк", "silk"],
@@ -63,9 +66,9 @@ MATO_SOZLAR = {
 }
 
 RANG_SOZLAR = {
-    "ko'k": ["ko'k", "kok ", " kuk", "moviy", "синий", "blue"],
-    "qizil": ["qizil", "красн", "red"],
-    "yashil": ["yashil", "зелён", "зелен", "green"],
+    "ko'k": ["ko'k", "kok ", " kuk", "moviy", "синий", "blue", "kók"],
+    "qizil": ["qizil", "красн", "red", "qızıl"],
+    "yashil": ["yashil", "зелён", "зелен", "green", "jasıl"],
     "sariq": ["sariq", "жёлт", "желт", "yellow"],
     "oq": ["oq ", " oq", "oq-", "белый", "white"],
     "qora": ["qora", "чёрн", "черн", "black"],
@@ -78,7 +81,7 @@ RANG_SOZLAR = {
 }
 
 FASON_SOZLAR = {
-    "zamonaviy": ["zamonaviy", "modern", "hozirgi zamon", "стильн", "современ"],
+    "zamonaviy": ["zamonaviy", "modern", "hozirgi zamon", "стильн", "современ", "zamanagóy"],
     "milliy": ["milliy", "an'anaviy", "ananaviy", "milly", "национал"],
     "klassik": ["klassik", "классик", "classic"],
     "erkin": ["erkin", "keng", "oversize", "свободн"],
@@ -86,7 +89,7 @@ FASON_SOZLAR = {
 }
 
 TADBIR_SOZLAR = {
-    "to'y": ["to'y", "toy ", "tuy", "nikoh", "kelin", "свадьб", "wedding"],
+    "to'y": ["to'y", "toy ", "toy", "tuy", "nikoh", "kelin", "свадьб", "wedding", "toyǵa"],
     "bayram": ["bayram", "navro'z", "navruz", "hayit", "праздник"],
     "kundalik": ["kundalik", "har kuni", "oddiy kiyim", "повседнев"],
     "ish": ["ish uchun", "ofis", "офис", "work"],
@@ -221,7 +224,11 @@ def _json_ajrat(matn):
     return json.loads(matn[boshi:oxiri + 1])
 
 
-def ai_tahlil(cfg, suhbat):
+GEMINI_ZAXIRA = ["gemini-3.8-flash", "gemini-3.5-flash", "gemini-3.5-flash-lite",
+                 "gemini-3.1-flash-lite", "gemini-flash-lite-latest"]
+
+
+def ai_tahlil(cfg, suhbat, tizim=None, json_parse=True):
     """
     suhbat — [{"rol": "mijoz"/"ai", "matn": "..."}] ko'rinishidagi ro'yxat.
     Xatolik bo'lsa Exception ko'taradi (chaqiruvchi offline rejimga o'tadi).
@@ -237,19 +244,30 @@ def ai_tahlil(cfg, suhbat):
 
     if provider == "gemini":
         model = model or "gemini-3.6-flash"
-        url = ("https://generativelanguage.googleapis.com/v1beta/models/"
-               + model + ":generateContent?key=" + key)
         parts = []
         for x in suhbat:
             rol = "user" if x["rol"] == "mijoz" else "model"
             parts.append({"role": rol, "parts": [{"text": x["matn"]}]})
         body = {
-            "systemInstruction": {"parts": [{"text": TIZIM_PROMPT}]},
+            "systemInstruction": {"parts": [{"text": (tizim or TIZIM_PROMPT)}]},
             "contents": parts,
-            "generationConfig": {"temperature": 0.4, "maxOutputTokens": 2000,
+            "generationConfig": {"temperature": 0.4, "maxOutputTokens": 8192,
                                  "responseMimeType": "application/json"},
         }
-        j = _post(url, body, {"Content-Type": "application/json"})
+        # Bepul limit har model uchun alohida (daqiqasiga ~5 so'rov) — bittasi band
+        # bo'lsa (429/503), navbatdagi zaxira modelga o'tamiz.
+        j = None
+        for m in [model] + [z for z in GEMINI_ZAXIRA if z != model]:
+            url = ("https://generativelanguage.googleapis.com/v1beta/models/"
+                   + m + ":generateContent?key=" + key)
+            try:
+                j = _post(url, body, {"Content-Type": "application/json"})
+                break
+            except urllib.error.HTTPError as e:
+                if e.code not in (429, 500, 503):
+                    raise
+        if j is None:
+            raise ValueError("Barcha Gemini modellari band")
         bolaklar = j["candidates"][0]["content"].get("parts") or []
         matn = "".join(b.get("text", "") for b in bolaklar)
 
@@ -257,7 +275,7 @@ def ai_tahlil(cfg, suhbat):
         model = model or "claude-sonnet-5"
         msgs = [{"role": ("user" if x["rol"] == "mijoz" else "assistant"),
                  "content": x["matn"]} for x in suhbat]
-        body = {"model": model, "max_tokens": 800, "system": TIZIM_PROMPT,
+        body = {"model": model, "max_tokens": 800, "system": tizim or TIZIM_PROMPT,
                 "messages": msgs}
         j = _post("https://api.anthropic.com/v1/messages", body, {
             "Content-Type": "application/json",
@@ -269,7 +287,7 @@ def ai_tahlil(cfg, suhbat):
     else:  # openai va unga mos servislar (Groq, OpenRouter, ...)
         model = model or "gpt-4o-mini"
         base = cfg.get("ai_url") or "https://api.openai.com/v1/chat/completions"
-        msgs = [{"role": "system", "content": TIZIM_PROMPT}]
+        msgs = [{"role": "system", "content": tizim or TIZIM_PROMPT}]
         for x in suhbat:
             msgs.append({"role": ("user" if x["rol"] == "mijoz" else "assistant"),
                          "content": x["matn"]})
@@ -279,6 +297,8 @@ def ai_tahlil(cfg, suhbat):
                                "Authorization": "Bearer " + key})
         matn = j["choices"][0]["message"]["content"]
 
+    if not json_parse:
+        return matn
     natija = _json_ajrat(matn)
     natija.setdefault("tayyor", False)
     natija.setdefault("savol", None)
@@ -286,10 +306,31 @@ def ai_tahlil(cfg, suhbat):
     return natija
 
 
-def tahlil(cfg, suhbat):
-    """Asosiy kirish nuqtasi: avval AI, xato bo'lsa offline tahlil."""
+TIL_KORSATMA = {
+    "en": "\n\nIMPORTANT: The customer writes in English. Ask your question (\"savol\") in English, "
+          "friendly and short. But write ALL values inside \"buyurtma\" in UZBEK — the artisan reads Uzbek "
+          "(e.g. ikat -> adras, silk -> shoyi/atlas, dress -> ko'ylak, vest -> nimcha, blue -> ko'k).",
+    "kaa": "\n\nMUHIM: Mijoz qoraqalpoq tilida yozadi. Savolni (\"savol\") qoraqalpoq tilida "
+           "(lotin yozuvi) ber. \"buyurtma\" ichidagi qiymatlarni esa O'ZBEK tilida yoz.",
+}
+
+
+def erkin_soro(cfg, prompt, model=None):
+    """AI'ga oddiy so'rov (masalan tarjima). Matn qaytaradi, xatoda Exception."""
+    if model:
+        cfg = dict(cfg, ai_model=model)
+    return ai_tahlil(cfg, [{"rol": "mijoz", "matn": prompt}],
+                     tizim="You are a precise translator. Reply with JSON only.",
+                     json_parse=False)
+
+
+def tahlil(cfg, suhbat, til="uz"):
+    """Asosiy kirish nuqtasi: avval AI, xato bo'lsa offline tahlil.
+    til — mijoz tili; savol shu tilda, buyurtma varaqasi esa doim o'zbekcha."""
     try:
-        return ai_tahlil(cfg, suhbat)
+        r = ai_tahlil(cfg, suhbat, tizim=TIZIM_PROMPT + TIL_KORSATMA.get(til, ""))
+        r["_ai"] = True
+        return r
     except Exception:
         matnlar = [x["matn"] for x in suhbat if x["rol"] == "mijoz"]
         return offline_tahlil(matnlar)

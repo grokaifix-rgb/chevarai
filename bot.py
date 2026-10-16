@@ -22,6 +22,7 @@ import ai
 import admin
 import dokon
 import usta
+import tarjima
 from core import (ADMINLAR, ALOQA_TEL, ALOQA_TG, BOSH_ADMIN, DATA, KARTA,
                   KARTA_EGASI, OLDINDAN, PLATFORMA, TOKEN, adminlarga, admin_mi,
                   api, holat, holat_ol, holat_tozala, log, menyu_tugmalari,
@@ -56,7 +57,8 @@ MIJOZ_MENYU = menyu_tugmalari([
     ["🤖 AI bilan buyurtma"],
     ["👗 Dizaynlar", "🛍 Do'kon"],
     ["🛒 Savatim", "📦 Buyurtmalarim"],
-    ["ℹ️ Yordam", "🪡 Men hunarmandman"],
+    ["ℹ️ Yordam", "🌐 Til"],
+    ["🪡 Men hunarmandman"],
 ])
 
 USTA_MENYU = menyu_tugmalari([
@@ -64,6 +66,7 @@ USTA_MENYU = menyu_tugmalari([
     ["🧾 Mening ishlarim", "👤 Profilim"],
     ["🖼 Portfolio", "⏸ Dam olish"],
     ["🛍 Do'kon", "🤖 AI bilan buyurtma"],
+    ["🌐 Til"],
 ])
 
 # Admin uchun butunlay alohida panel — mijoz tugmalari aralashmaydi
@@ -71,7 +74,8 @@ ADMIN_MENYU = menyu_tugmalari([
     ["📊 Statistika"],
     ["🤖 Tikish buyurtmalari", "🛍 Do'kon buyurtmalari"],
     ["🛒 Mahsulot qo'shish", "👗 Dizayn qo'shish"],
-    ["🪡 Hunarmandlar", "📋 Ro'yxat"],
+    ["🪡 Hunarmandlar", "👥 Foydalanuvchilar"],
+    ["📋 Ro'yxat"],
     ["👤 Mijoz rejimiga o'tish"],
 ])
 
@@ -133,7 +137,8 @@ def suhbat_davom(uid, matn):
     suhbat.append({"rol": "mijoz", "matn": matn})
 
     yubor(uid, "🤖 <i>O'ylayapman...</i>")
-    natija = ai.tahlil(AI_CFG, suhbat)
+    til = profil(uid).get("til") or "uz"
+    natija = ai.tahlil(AI_CFG, suhbat, til)
 
     h["buyurtma"] = natija.get("buyurtma") or {}
     savol_soni = h.get("savollar", 0)
@@ -144,7 +149,8 @@ def suhbat_davom(uid, matn):
         h["suhbat"] = suhbat
         h["savollar"] = savol_soni + 1
         saqla()
-        yubor(uid, "❓ " + savol)
+        # AI savolni allaqachon mijoz tilida bergan — qayta tarjima shart emas
+        yubor(uid, "❓ " + esc(savol), tarj=not natija.get("_ai"))
         return
 
     h["suhbat"] = suhbat
@@ -666,6 +672,7 @@ def xabar(msg):
                         + msg["from"].get("last_name", "")).strip())
     if msg["from"].get("username"):
         p["username"] = msg["from"]["username"]
+    p["oxirgi"] = vaqt()
 
     h = holat_ol(uid)
     bosqich = h.get("bosqich", "")
@@ -696,7 +703,7 @@ def xabar(msg):
             return
 
     # Foydalanuvchi matnidagi < > & belgilar xabarni buzmasligi uchun
-    matn = esc((msg.get("text") or "").strip())
+    matn = tarjima.asl_tugma(esc((msg.get("text") or "").strip()))
     if not matn:
         if bosqich in ("chek", "schek", "qosh_rasm", "portfolio", "tayyor_rasm"):
             yubor(uid, "📸 Iltimos, <b>rasm</b> yuboring.")
@@ -705,6 +712,19 @@ def xabar(msg):
     past = matn.lower()
 
     # --- Buyruqlar ---
+    if past.startswith("/start") and not p.get("til") and not admin_mi(uid):
+        holat_tozala(uid)
+        saqla()
+        yubor(uid, "🌐 Tilni tanlang · Tildi saylań · Choose your language",
+              kb=tarjima.til_tugmalari(), tarj=False)
+        return
+    if past.startswith("/til") or matn == "🌐 Til":
+        yubor(uid, "🌐 Tilni tanlang · Tildi saylań · Choose your language",
+              kb=tarjima.til_tugmalari(), tarj=False)
+        return
+    if past.startswith("/topish") and admin_mi(uid):
+        admin.topish(uid, matn[7:].strip())
+        return
     if past.startswith("/start"):
         holat_tozala(uid)
         saqla()
@@ -781,6 +801,9 @@ def xabar(msg):
         if matn == "👗 Dizayn qo'shish":
             admin.qoshish_boshla(uid, "dizayn")
             return
+        if matn == "👥 Foydalanuvchilar":
+            admin.foydalanuvchilar(uid)
+            return
         if matn in ("🪡 Hunarmandlar", "🪡 Hunarmand arizalari"):
             admin.hunarmandlar(uid)
             return
@@ -837,6 +860,8 @@ def xabar(msg):
             yubor(uid, "❗️ Telefon raqamni to'liq yozing.")
             return
         h["tel"] = matn.replace(" ", "")
+        if p.get("rol") != "usta":  # ustaning o'z ish telefoni o'zgarmasin
+            p["tel"] = h["tel"]
         saqla()
         buyurtma_yarat(uid)
     elif bosqich == "usta_reg":
@@ -857,6 +882,9 @@ def xabar(msg):
             yubor(uid, "❗️ Telefon raqamni to'liq yozing.")
             return
         h["tel"] = matn.replace(" ", "")
+        if p.get("rol") != "usta":
+            p["tel"] = h["tel"]
+        p["manzil"] = h.get("manzil") or p.get("manzil", "")
         saqla()
         dokon.sotuv_yarat(uid)
     elif bosqich == "narx_izoh":
@@ -885,6 +913,23 @@ def tugma(cq):
     msg = cq.get("message", {})
     message_id = msg.get("message_id")
     javob_ber(cq["id"])
+
+    # --- Til tanlash ---
+    if data.startswith("til_"):
+        kod = data[4:]
+        if kod in tarjima.TILLAR:
+            p = profil(uid)
+            p["til"] = kod
+            saqla()
+            tahrirla(uid, msg.get("message_id"), "✅ " + tarjima.TILLAR[kod])
+            if admin_mi(uid) and p.get("rejim") != "mijoz":
+                yubor(uid, ADMIN_SALOM, menyu=ADMIN_MENYU)
+            else:
+                yubor(uid, SALOM, menyu=menyu(uid))
+        return
+    if data.startswith("dzkat_"):
+        dokon.dizaynlar_royxati(uid, 0, data[6:])
+        return
 
     # --- AI buyurtma varaqasi ---
     if data == "v_ok":
@@ -989,7 +1034,8 @@ def tugma(cq):
 
     # --- Dizaynlar va do'kon ---
     if data.startswith("dzsah_"):
-        dokon.dizaynlar_royxati(uid, int(data[6:]))
+        _, sah, *kat = data.split("_", 2)
+        dokon.dizaynlar_royxati(uid, int(sah), kat[0] if kat else None)
         return
     if data.startswith("dz_"):
         dokon.dizayn_tanlandi(uid, data[3:])
@@ -1065,6 +1111,8 @@ def main():
         {"command": "yordam", "description": "Yordam"},
         {"command": "bekor", "description": "Joriy amalni bekor qilish"},
     ])
+
+    dokon.dizaynlar_ekish()
 
     for a in ADMINLAR:
         yubor(a, "🟢 " + PLATFORMA + " boti ishga tushdi (@" + str(nom) + ")")

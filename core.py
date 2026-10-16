@@ -215,7 +215,36 @@ def menyu_tugmalari(qatorlar):
             "resize_keyboard": True}
 
 
-def yubor(chat_id, matn, kb=None, menyu=None):
+def foydalanuvchi_tili(chat_id):
+    return (DATA["foydalanuvchilar"].get(str(chat_id), {}).get("til") or "uz")
+
+
+def _tarjimala(chat_id, matn, markup):
+    """Foydalanuvchi tili o'zbekcha bo'lmasa — matn va tugmalarni tarjima qiladi."""
+    til = foydalanuvchi_tili(chat_id)
+    if til == "uz":
+        return matn, markup
+    import copy
+    import tarjima
+    markup = copy.deepcopy(markup) if markup else markup
+    tugmalar_ = []
+    if markup:
+        for q in markup.get("inline_keyboard", []) + markup.get("keyboard", []):
+            tugmalar_.extend(q)
+    royxat = [matn or ""] + [t["text"] for t in tugmalar_]
+    tr = tarjima.tarjima(royxat, til)
+    for t, yangi in zip(tugmalar_, tr[1:]):
+        t["text"] = yangi
+    return tr[0], markup
+
+
+def yubor(chat_id, matn, kb=None, menyu=None, tarj=True):
+    if tarj:
+        matn, m = _tarjimala(chat_id, matn, kb or menyu)
+        if kb:
+            kb = m
+        elif menyu:
+            menyu = m
     p = {"chat_id": chat_id, "text": matn, "parse_mode": "HTML",
          "disable_web_page_preview": True}
     if kb:
@@ -226,6 +255,7 @@ def yubor(chat_id, matn, kb=None, menyu=None):
 
 
 def rasm_yubor(chat_id, file_id, matn="", kb=None):
+    matn, kb = _tarjimala(chat_id, matn, kb)
     p = {"chat_id": chat_id, "photo": file_id, "parse_mode": "HTML"}
     if matn:
         p["caption"] = matn
@@ -234,7 +264,28 @@ def rasm_yubor(chat_id, file_id, matn="", kb=None):
     return api("sendPhoto", **p)
 
 
+def rasm_yuklash(chat_id, yol):
+    """Diskdagi rasmni Telegramga yuklaydi va uning file_id sini qaytaradi."""
+    import uuid
+    chegara = uuid.uuid4().hex
+    with open(yol, "rb") as f:
+        rasm = f.read()
+    tana = (("--" + chegara + "\r\nContent-Disposition: form-data; name=\"chat_id\"\r\n\r\n"
+             + str(chat_id) + "\r\n--" + chegara + "\r\nContent-Disposition: form-data; "
+             "name=\"photo\"; filename=\"" + os.path.basename(yol) + "\"\r\n"
+             "Content-Type: image/jpeg\r\n\r\n").encode("utf-8") + rasm
+            + ("\r\n--" + chegara + "--\r\n").encode("utf-8"))
+    req = urllib.request.Request(API.format(token=TOKEN, method="sendPhoto"), data=tana,
+                                 headers={"Content-Type": "multipart/form-data; boundary=" + chegara})
+    with urllib.request.urlopen(req, timeout=90, context=SSL_CTX) as r:
+        j = json.loads(r.read().decode("utf-8"))
+    xabar = j["result"]
+    api("deleteMessage", chat_id=chat_id, message_id=xabar["message_id"])
+    return xabar["photo"][-1]["file_id"]
+
+
 def tahrirla(chat_id, message_id, matn, kb=None):
+    matn, kb = _tarjimala(chat_id, matn, kb)
     p = {"chat_id": chat_id, "message_id": message_id, "text": matn,
          "parse_mode": "HTML"}
     if kb:

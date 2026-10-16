@@ -24,6 +24,19 @@ Ro'yxati README.md da.
 
 ---
 
+## Tillar
+
+Bot uch tilda ishlaydi: **o'zbek**, **qoraqalpoq** va **ingliz**. Yangi foydalanuvchi
+`/start` bosganda avval tilni tanlaydi, keyin «🌐 Til» tugmasi bilan almashtiradi.
+
+- Mijoz istalgan tilda yozsa ham, **hunarmandga buyurtma varaqasi o'zbekcha boradi**.
+  Shunda chet ellik mijoz ham Qoraqalpog'istondagi tikuvchiga bemalol buyurtma beradi.
+- Botdagi doimiy matnlar oldindan tarjima qilingan (`tarjima_tayyor.json`).
+  Yangi matnlarni Gemini o'zi tarjima qilib, xotirada saqlab qo'yadi.
+- AI band bo'lsa, xabar o'zbekcha boradi — bot to'xtamaydi.
+- Qoraqalpoqcha tarjimani bir marta tili ona tili bo'lgan odamga ko'rsatib chiqing:
+  `tarjima_tayyor.json` faylida xatosini to'g'rilash mumkin.
+
 ## 2. Mijoz nima ko'radi
 
 Menyu:
@@ -96,6 +109,19 @@ Statistikada: foydalanuvchilar, hunarmandlar, tikish aylanmasi va **foydasi**,
 do'kon aylanmasi.
 
 ---
+
+### Foydalanuvchilar
+«👥 Foydalanuvchilar» — barcha mijozlar oxirgi faollik bo'yicha, 10 tadan. Ismni bossangiz
+to'liq profil: ism (Telegram profiliga havola), username, telefon, manzil, tili,
+qo'shilgan sana, oxirgi faollik, buyurtmalar, xaridlar, savati, jami to'lagan puli.
+Shu yerdan bloklash mumkin. Qidirish: `/topish ism`, `/topish @username`,
+`/topish telefon` yoki `/topish ID`.
+
+### Dizaynlar
+14 ta boshlang'ich namuna (sumkalar, nimchalar, ko'ylaklar, kurtka va chapanlar,
+erkaklar kiyimi, bosh kiyimlar) bot birinchi ishga tushganda o'zi qo'shiladi.
+Ular `rasmlar/dizaynlar/` papkasida va `dizaynlar_boshlangich.json` faylida.
+Yashirish: `/ochir N05`.
 
 ## 5. Pul qanday hisoblanadi
 

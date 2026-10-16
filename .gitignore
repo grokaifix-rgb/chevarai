@@ -13,3 +13,6 @@ __pycache__/
 venv/
 .DS_Store
 boshlangich-data.json
+
+# Taqdimot va nutq fayllari (kod emas)
+Chevar_AI_*

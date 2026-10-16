@@ -24,7 +24,12 @@ def faol_dizaynlar():
     return [d for d in DATA["dizaynlar"].values() if d.get("faol", True)]
 
 
-def dizaynlar_royxati(uid, sahifa=0):
+def _kod_tartib(d):
+    raqam = "".join(c for c in str(d.get("id", "")) if c.isdigit())
+    return int(raqam) if raqam else 0
+
+
+def dizaynlar_royxati(uid, sahifa=0, kategoriya=None):
     royxat = faol_dizaynlar()
     if not royxat:
         yubor(uid, "👗 <b>Dizaynlar bo'limi</b>\n\n"
@@ -34,15 +39,28 @@ def dizaynlar_royxati(uid, sahifa=0):
                    "aytib buyurtma bersangiz bo'ladi.")
         return
 
-    royxat.sort(key=lambda d: d.get("id", ""))
+    # Namunalar ko'p bo'lsa — avval bo'limlar
+    katlar = sorted({d.get("kategoriya") or "Boshqa" for d in royxat})
+    if kategoriya is None and len(royxat) > 5 and len(katlar) > 1:
+        qatorlar = [[(k + " (" + str(sum(1 for d in royxat if (d.get("kategoriya") or "Boshqa") == k))
+                      + ")", "dzkat_" + k)] for k in katlar]
+        qatorlar.append([("👗 Hammasi", "dzkat_*")])
+        yubor(uid, "👗 <b>Tayyor dizaynlar</b>\n\nYoqqanini tanlang — o'z o'lchamingizga "
+                   "tikib beramiz. Bo'limni tanlang:", kb=tugmalar(qatorlar))
+        return
+    if kategoriya and kategoriya != "*":
+        royxat = [d for d in royxat if (d.get("kategoriya") or "Boshqa") == kategoriya]
+
+    royxat.sort(key=_kod_tartib)
     boshi = sahifa * 5
     qism = royxat[boshi:boshi + 5]
     if not qism:
         yubor(uid, "Boshqa namuna yo'q.")
         return
 
-    yubor(uid, "👗 <b>Tayyor dizaynlar</b> — yoqqanini tanlang, "
-               "o'z o'lchamingizga tikib beramiz.")
+    if sahifa == 0:
+        yubor(uid, "👗 <b>" + (kategoriya if kategoriya and kategoriya != "*" else "Tayyor dizaynlar")
+              + "</b> — yoqqanini tanlang, o'z o'lchamingizga tikib beramiz.")
     for d in qism:
         matn = ("<b>" + d.get("nom", "Dizayn") + "</b>\n"
                 + (d.get("tavsif", "") or "") + "\n"
@@ -56,7 +74,8 @@ def dizaynlar_royxati(uid, sahifa=0):
 
     if len(royxat) > boshi + 5:
         yubor(uid, "Yana namunalar bor:",
-              kb=tugmalar([[("⬇️ Ko'proq ko'rsatish", "dzsah_" + str(sahifa + 1))]]))
+              kb=tugmalar([[("⬇️ Ko'proq ko'rsatish",
+                             "dzsah_" + str(sahifa + 1) + "_" + (kategoriya or "*"))]]))
 
 
 def dizayn_tanlandi(uid, dizayn_id):
@@ -399,3 +418,38 @@ def mening_xaridlarim(uid):
         q.append("#" + s["raqam"] + " · " + pul(s["umumiy"]) + " · "
                  + nomlar.get(s["holat"], s["holat"]))
     return "\n".join(q)
+
+
+# =====================  Boshlang'ich dizaynlar  =====================
+
+def dizaynlar_ekish():
+    """dizaynlar_boshlangich.json dagi namunalarni bazaga qo'shadi (faqat yo'qlarini).
+    Rasmlar bir marta Telegramga yuklanadi, keyin file_id saqlanadi."""
+    import json
+    import os
+    from core import BOSH_ADMIN, log, rasm_yuklash, vaqt
+    papka = os.path.dirname(os.path.abspath(__file__))
+    try:
+        with open(os.path.join(papka, "dizaynlar_boshlangich.json"), encoding="utf-8") as f:
+            royxat = json.load(f)
+    except Exception:
+        return
+    qoshildi = 0
+    for d in royxat:
+        kod = d["kod"]
+        if kod in DATA["dizaynlar"] or kod in DATA.get("ochirilgan_dizaynlar", []):
+            continue
+        try:
+            rasm = rasm_yuklash(BOSH_ADMIN, os.path.join(papka, "rasmlar", "dizaynlar", d["fayl"]))
+        except Exception as e:
+            log("Dizayn rasmi yuklanmadi (" + kod + "): " + str(e))
+            continue
+        DATA["dizaynlar"][kod] = {
+            "id": kod, "nom": d["nom"], "tavsif": d.get("tavsif", ""), "mato": d.get("mato", ""),
+            "rang": d.get("rang", ""), "kiyim": d.get("kiyim", ""), "kategoriya": d.get("kategoriya", ""),
+            "narx": 0, "rasm": rasm, "faol": True, "qoshildi": vaqt(),
+        }
+        qoshildi += 1
+    if qoshildi:
+        saqla()
+        log("Boshlang'ich dizaynlar qo'shildi: " + str(qoshildi))
