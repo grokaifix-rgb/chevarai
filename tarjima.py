@@ -18,9 +18,13 @@ import os
 import re
 import threading
 
+import alifbo
+
 TILLAR = {
-    "uz": "🇺🇿 O'zbekcha",
-    "kaa": "🏳️ Qaraqalpaqsha",
+    "uz": "🇺🇿 O'zbekcha (lotin)",
+    "uz_cyr": "🇺🇿 Ўзбекча (кирилл)",
+    "kaa": "🏳️ Qaraqalpaqsha (latın)",
+    "kaa_cyr": "🏳️ Қарақалпақша (кирилл)",
     "en": "🇬🇧 English",
 }
 TIL_NOMI_AI = {"en": "English", "kaa": "Karakalpak (Latin script, e.g. á, ó, ú, ı, ń, ǵ)"}
@@ -56,6 +60,11 @@ LUGAT = {
 }
 
 # Teskari lug'at: istalgan tildagi tugma matni -> o'zbekcha asl matn
+# Kirill variantlari tugmalar uchun avtomatik: o'zbekcha → kirill, qoraqalpoqcha → kirill
+for _uz, _tr in LUGAT.items():
+    _tr["uz_cyr"] = alifbo.kiril_uz(_uz)
+    _tr["kaa_cyr"] = alifbo.kiril_kaa(_tr["kaa"])
+
 TESKARI = {}
 for _uz, _tr in LUGAT.items():
     for _t in _tr.values():
@@ -164,7 +173,29 @@ def _ai_tarjima(matnlar, til, model=None):
     return [str(x) for x in natija]
 
 
+def kiril(matn, til):
+    """Faqat yozuvni almashtiradi (tarjima emas): AI allaqachon to'g'ri tilda bergan matn uchun."""
+    if til == "uz_cyr":
+        return alifbo.kiril_uz(matn)
+    if til == "kaa_cyr":
+        return alifbo.kiril_kaa(matn)
+    return matn
+
+
+def ai_tili(til):
+    """AI suhbati uchun til (kirill varianti — o'sha tilning lotin yozuvi, keyin almashtiriladi)."""
+    return {"uz_cyr": "uz", "kaa_cyr": "kaa"}.get(til, til)
+
+
 def tarjima(matnlar, til):
+    if til == "uz_cyr":
+        return [alifbo.kiril_uz(m) for m in matnlar]
+    if til == "kaa_cyr":
+        return [alifbo.kiril_kaa(m) for m in tarjima(matnlar, "kaa")]
+    return _tarjima(matnlar, til)
+
+
+def _tarjima(matnlar, til):
     """Matnlar ro'yxatini tarjima qiladi (qatorma-qator, qolip bilan).
     Tarjima topilmagan qator o'zbekcha qoladi — bot hech qachon to'xtamaydi."""
     if til not in TIL_NOMI_AI or not matnlar:

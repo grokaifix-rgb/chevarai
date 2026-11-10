@@ -332,7 +332,8 @@ def tahlil(cfg, suhbat, til="uz"):
         r["_ai"] = True
         return r
     except Exception:
-        matnlar = [x["matn"] for x in suhbat if x["rol"] == "mijoz"]
+        import alifbo
+        matnlar = [alifbo.lotin_uz(x["matn"]) for x in suhbat if x["rol"] == "mijoz"]
         return offline_tahlil(matnlar)
 
 

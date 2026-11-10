@@ -14,7 +14,7 @@ from core import (DATA, api, esc, holat, holat_ol, holat_tozala, profil,
                   rasm_yubor, saqla, tugmalar, usta_reyting, vaqt, yubor)
 
 PORTFOLIO_MAX = 10
-FAOL_HOLATLAR = ("tasdiqlangan", "tikilmoqda", "tayyor")
+FAOL_HOLATLAR = ("tasdiqlangan", "tikilmoqda", "tayyor", "yetkazilmoqda")
 
 
 def reyting_matni(uid):

@@ -26,7 +26,8 @@ Ro'yxati README.md da.
 
 ## Tillar
 
-Bot uch tilda ishlaydi: **o'zbek**, **qoraqalpoq** va **ingliz**. Yangi foydalanuvchi
+Bot besh variantda ishlaydi: **o'zbek (lotin / кирилл)**, **qoraqalpoq (latın / кирилл)** va
+**ingliz**. Kirill yozuvi AI'siz, aniq harf almashtirish bilan ishlaydi — katta yoshdagilar uchun. Yangi foydalanuvchi
 `/start` bosganda avval tilni tanlaydi, keyin «🌐 Til» tugmasi bilan almashtiradi.
 
 - Mijoz istalgan tilda yozsa ham, **hunarmandga buyurtma varaqasi o'zbekcha boradi**.
@@ -67,6 +68,12 @@ Belgilangan summadan katta xaridda yetkazish **bepul**.
 To'lov: karta → chek rasmi → admin tasdiqlaydi → 🚚 yo'lga chiqdi → ✅ topshirildi.
 
 ---
+
+### Buyurtmani kuzatish
+«📦 Buyurtmalarim» → «📍 #1001 ni kuzatish»: 📥 Qabul qilindi → 🪡 Tikilmoqda → 🎊 Tayyor →
+🚚 Yetkazilmoqda → ✅ Topshirildi, har bosqich sanasi bilan. Yakuniy to'lovdan keyin buyurtma
+«yetkazilmoqda» bo'ladi; mijoz «✅ Qabul qilib oldim» bosadi (unutsa — admin panelidan belgilanadi).
+Shundan keyin baho (1–5 ⭐️) va matnli **sharh** so'raladi. Sharhlar keyingi takliflarda ko'rinadi.
 
 ## 3. Hunarmand nima qiladi
 

@@ -71,7 +71,7 @@ def usta_kartasi(u, p):
     """Hunarmandning to'liq profili — admin uchun, anonimsiz."""
     ort, soni, yakun = usta_reyting(u)
     ishlar = [b for b in DATA["buyurtmalar"].values() if str(b.get("usta")) == str(u)]
-    faol = sum(1 for b in ishlar if b["holat"] in ("tasdiqlangan", "tikilmoqda", "tayyor"))
+    faol = sum(1 for b in ishlar if b["holat"] in ("tasdiqlangan", "tikilmoqda", "tayyor", "yetkazilmoqda"))
     daromad = sum(b.get("usta_narx", 0) for b in ishlar if b["holat"] == "yakunlandi")
     takliflar = sum(1 for b in DATA["buyurtmalar"].values() if str(u) in b.get("takliflar", {}))
     if p.get("bloklangan"):
@@ -95,6 +95,7 @@ def usta_kartasi(u, p):
             + " · ✅ Bajarilgan: " + str(yakun) + "\n"
             "💰 Ishlab topgan: " + pul(daromad) + "\n"
             "🖼 Portfolio: " + str(len(p.get("portfolio", []))) + " ta rasm\n"
+            "💬 Sharhlar: " + str(len(p.get("sharhlar", []))) + " ta\n"
             "📅 Qo'shilgan: " + (p.get("qoshildi") or "-") + "\n"
             "🆔 <code>" + str(u) + "</code>")
 
@@ -116,6 +117,8 @@ def hunarmandlar(uid):
             qatorlar.append([("✅ Tasdiqlash", "utasdiq_" + u), ("❌ Rad etish", "urad_" + u)])
         if p.get("portfolio"):
             qatorlar.append([("🖼 Portfolio", "pf_" + u)])
+        if p.get("sharhlar"):
+            qatorlar.append([("💬 Sharhlar", "sh_" + u)])
         qatorlar.append([("✅ Blokdan chiqarish", "ublok_" + u) if p.get("bloklangan")
                          else ("🚫 Bloklash", "ublok_" + u)])
         yubor(uid, usta_kartasi(u, p), kb=tugmalar(qatorlar))
@@ -230,7 +233,11 @@ def buyurtmalar(uid):
     for b in sorted(faol, key=lambda x: int(x["raqam"]), reverse=True)[:20]:
         q.append("#" + b["raqam"] + " · " + bot.HOLAT_NOMI.get(b["holat"], b["holat"])
                  + (" · " + pul(b["umumiy_narx"]) if b.get("umumiy_narx") else ""))
-    yubor(uid, "\n".join(q))
+    yetk = [b for b in faol if b["holat"] == "yetkazilmoqda"]
+    kb = tugmalar([[("✅ #" + b["raqam"] + " topshirildi", "atop_" + b["raqam"])] for b in yetk[:8]]) \
+        if yetk else None
+    yubor(uid, "\n".join(q) + ("\n\n<i>Yetkazilayotganlarni mijoz o'zi tasdiqlaydi; "
+                                "unutsa — shu yerdan belgilang.</i>" if yetk else ""), kb=kb)
 
 
 def sotuvlar(uid):
@@ -421,6 +428,12 @@ def tugma(uid, data, message_id):
                       "Endi yangi buyurtmalar sizga avtomatik keladi.",
               menyu=bot.USTA_MENYU)
 
+    elif data.startswith("atop_"):
+        import bot
+        if bot.topshirildi(data[5:], "admin"):
+            tahrirla(uid, message_id, "✅ #" + data[5:] + " topshirildi deb belgilandi")
+        else:
+            tahrirla(uid, message_id, "ℹ️ #" + data[5:] + " allaqachon topshirilgan")
     elif data.startswith("fsah_"):
         foydalanuvchilar(uid, int(data[5:]))
     elif data.startswith("fk_"):

@@ -23,6 +23,7 @@ import admin
 import dokon
 import usta
 import tarjima
+import kuzatuv
 from core import (ADMINLAR, ALOQA_TEL, ALOQA_TG, BOSH_ADMIN, DATA, KARTA,
                   KARTA_EGASI, OLDINDAN, PLATFORMA, TOKEN, adminlarga, admin_mi,
                   api, holat, holat_ol, holat_tozala, log, menyu_tugmalari,
@@ -89,6 +90,33 @@ MIJOZ_MENYU_ADMIN = menyu_tugmalari([
 ])
 
 
+def salom(uid):
+    """Banner rasm + salom matni + menyu."""
+    banner = DATA.get("media", {}).get("banner")
+    if banner:
+        from core import rasm_yubor as _ry
+        r = _ry(uid, banner)
+        if r:
+            yubor(uid, SALOM, menyu=menyu(uid))
+            return
+    yubor(uid, SALOM, menyu=menyu(uid))
+
+
+def banner_yukla():
+    """rasmlar/brend/banner.jpg ni bir marta Telegramga yuklab, file_id saqlaydi."""
+    import os
+    from core import rasm_yuklash
+    yol = os.path.join(os.path.dirname(os.path.abspath(__file__)), "rasmlar", "brend", "banner.jpg")
+    m = DATA.setdefault("media", {})
+    if m.get("banner") or not os.path.exists(yol):
+        return
+    try:
+        m["banner"] = rasm_yuklash(BOSH_ADMIN, yol)
+        saqla()
+    except Exception as e:
+        log("Banner yuklanmadi: " + str(e))
+
+
 def menyu(uid):
     """Har bir rol o'z panelini ko'radi: admin / hunarmand / mijoz."""
     p = profil(uid)
@@ -138,7 +166,7 @@ def suhbat_davom(uid, matn):
 
     yubor(uid, "🤖 <i>O'ylayapman...</i>")
     til = profil(uid).get("til") or "uz"
-    natija = ai.tahlil(AI_CFG, suhbat, til)
+    natija = ai.tahlil(AI_CFG, suhbat, tarjima.ai_tili(til))
 
     h["buyurtma"] = natija.get("buyurtma") or {}
     savol_soni = h.get("savollar", 0)
@@ -150,7 +178,10 @@ def suhbat_davom(uid, matn):
         h["savollar"] = savol_soni + 1
         saqla()
         # AI savolni allaqachon mijoz tilida bergan — qayta tarjima shart emas
-        yubor(uid, "❓ " + esc(savol), tarj=not natija.get("_ai"))
+        if natija.get("_ai"):
+            yubor(uid, tarjima.kiril("❓ " + esc(savol), til), tarj=False)
+        else:
+            yubor(uid, "❓ " + esc(savol))
         return
 
     h["suhbat"] = suhbat
@@ -391,6 +422,8 @@ def izoh_qabul(uid, matn):
     if p.get("portfolio"):
         qatorlar.append([("🖼 Ishlarini ko'rish (" + str(len(p["portfolio"])) + ")",
                           "pf_" + str(uid))])
+    if p.get("sharhlar"):
+        qatorlar.append([("💬 Sharhlar (" + str(len(p["sharhlar"])) + ")", "sh_" + str(uid))])
     qatorlar.append([("👀 Boshqa takliflarni kutaman", "kut_" + raqam)])
     yubor(b["mijoz"],
           "💰 <b>#" + raqam + " uchun yangi taklif!</b>\n\n"
@@ -398,7 +431,8 @@ def izoh_qabul(uid, matn):
           + (" (" + p.get("shahar", "") + ")" if p.get("shahar") else "") + "\n"
           "🧵 Ixtisos: " + (p.get("ixtisos") or "-") + "\n"
           + ("⏳ Tajriba: " + str(p.get("tajriba")) + " yil\n" if p.get("tajriba") else "")
-          + usta.reyting_matni(uid) + "\n\n"
+          + usta.reyting_matni(uid) + "\n"
+          + (kuzatuv.sharhlar_matni(uid) + "\n" if kuzatuv.sharhlar_matni(uid) else "") + "\n"
           "💵 Narx: <b>" + pul(mijoz_narxi(usta_narx)) + "</b>\n"
           "🗓 Muddat: <b>" + kun + " kun</b>"
           + ("\n💬 <i>" + izoh + "</i>" if izoh else "")
@@ -520,11 +554,13 @@ def tolov_tasdiq(raqam, tur):
         return False
     if tur == "oldindan":
         b["holat"] = "tikilmoqda"
+        kuzatuv.belgila(b, "tikilmoqda")
         b["tolov"]["holat"] = "oldindan_tolangan"
         b["tarix"].append(vaqt() + " — oldindan to'lov qabul qilindi")
         saqla()
         yubor(b["mijoz"], "✅ To'lovingiz tasdiqlandi!\n\n"
-                          "🪡 Hunarmand ishni boshladi. Tayyor bo'lgach xabar beramiz.")
+                          "🪡 Hunarmand ishni boshladi. Tayyor bo'lgach xabar beramiz.\n\n"
+                          + kuzatuv.matn(b))
         if b.get("usta"):
             yubor(b["usta"], "🟢 <b>#" + raqam + " — ishni boshlang!</b>\n\n"
                              "Mijoz oldindan to'lovni amalga oshirdi.\n"
@@ -532,16 +568,38 @@ def tolov_tasdiq(raqam, tur):
                   kb=tugmalar([[("✅ Tayyor bo'ldi", "tayyor_" + raqam)],
                                [("✉️ Mijozga yozish", "yoz_" + raqam)]]))
     else:
-        b["holat"] = "yakunlandi"
+        b["holat"] = "yetkazilmoqda"
+        kuzatuv.belgila(b, "yetkazilmoqda")
         b["tolov"]["holat"] = "toliq_tolangan"
-        b["tarix"].append(vaqt() + " — yakuniy to'lov qabul qilindi")
+        b["tarix"].append(vaqt() + " — yakuniy to'lov qabul qilindi, yetkazilmoqda")
         saqla()
-        yubor(b["mijoz"], "🎉 Buyurtma yakunlandi! Xizmatimizdan foydalanganingiz "
-                          "uchun rahmat.\n\nHunarmandni baholang:",
-              kb=tugmalar([[("⭐️" * i, "baho_" + raqam + "_" + str(i))] for i in (5, 4, 3)]))
+        yubor(b["mijoz"], "🚚 <b>To'lov qabul qilindi — buyurtmangiz yetkazilmoqda!</b>\n\n"
+                          + kuzatuv.matn(b)
+                          + "\n\nKiyimni qo'lingizga olganingizda pastdagi tugmani bosing.",
+              kb=tugmalar([[("✅ Qabul qilib oldim", "olindi_" + raqam)],
+                           [("✉️ Hunarmandga yozish", "yoz_" + raqam)]]))
         if b.get("usta"):
-            yubor(b["usta"], "💰 <b>#" + raqam + "</b> yakunlandi. Sizning ulushingiz: <b>"
-                  + pul(b["usta_narx"]) + "</b>\nHisob-kitob administrator orqali.")
+            yubor(b["usta"], "🚚 <b>#" + raqam + "</b> — to'lov to'liq. Kiyimni mijozga topshiring.\n"
+                  "Mijoz qabul qilgach ulushingiz (" + pul(b["usta_narx"]) + ") hisoblanadi.",
+                  kb=tugmalar([[("✉️ Mijozga yozish", "yoz_" + raqam)]]))
+    return True
+
+
+def topshirildi(raqam, kim="mijoz"):
+    """Yetkazilmoqda → topshirildi. Mijoz yoki admin tasdiqlaydi."""
+    b = DATA["buyurtmalar"].get(raqam)
+    if not b or b["holat"] != "yetkazilmoqda":
+        return False
+    b["holat"] = "yakunlandi"
+    kuzatuv.belgila(b, "yakunlandi")
+    b["tarix"].append(vaqt() + " — topshirildi (" + kim + ")")
+    saqla()
+    yubor(b["mijoz"], "🎉 <b>Buyurtma topshirildi!</b> Xizmatimizdan foydalanganingiz uchun rahmat.\n\n"
+                      + kuzatuv.matn(b) + "\n\nHunarmandni baholang:",
+          kb=tugmalar([[("⭐️" * i, "baho_" + raqam + "_" + str(i))] for i in (5, 4, 3, 2, 1)]))
+    if b.get("usta"):
+        yubor(b["usta"], "💰 <b>#" + raqam + "</b> topshirildi. Sizning ulushingiz: <b>"
+              + pul(b["usta_narx"]) + "</b>\nHisob-kitob administrator orqali.")
     return True
 
 
@@ -553,6 +611,7 @@ def ish_tayyor(usta_uid, raqam, rasm=""):
         b["tayyor_rasm"] = rasm
         rasm_yubor(b["mijoz"], rasm, "📸 Tayyor kiyimingiz (#" + raqam + ")")
     b["holat"] = "tayyor"
+    kuzatuv.belgila(b, "tayyor")
     b["tarix"].append(vaqt() + " — hunarmand ishni tayyor dedi")
     saqla()
     yubor(usta_uid, "✅ Rahmat! Mijozga xabar berdik.")
@@ -560,7 +619,7 @@ def ish_tayyor(usta_uid, raqam, rasm=""):
           "🎊 <b>Buyurtmangiz tayyor!</b> (#" + raqam + ")\n\n"
           "Qolgan to'lov: <b>" + pul(b["tolov"]["qolgan"]) + "</b>\n"
           "Karta: <code>" + KARTA + "</code>\nEgasi: " + KARTA_EGASI + "\n\n"
-          "To'lagach chekni yuboring — so'ng yetkazib berish kelishiladi.",
+          "To'lagach chekni yuboring — so'ng yetkazib beriladi.\n\n" + kuzatuv.matn(b),
           kb=tugmalar([[("📸 Yakuniy to'lov cheki", "chek2_" + raqam)]]))
 
 
@@ -571,7 +630,8 @@ HOLAT_NOMI = {
     "tasdiqlangan": "💳 Oldindan to'lov kutilmoqda",
     "tikilmoqda": "🪡 Tikilmoqda",
     "tayyor": "🎊 Tayyor — yakuniy to'lov",
-    "yakunlandi": "✅ Yakunlandi",
+    "yetkazilmoqda": "🚚 Yetkazilmoqda",
+    "yakunlandi": "✅ Topshirildi",
     "bekor": "❌ Bekor qilingan",
 }
 
@@ -595,12 +655,19 @@ def mijoz_buyurtmalari(uid):
     if xarid:
         qismlar.append(xarid)
 
+    faollar = [b for b in sorted(royxat, key=lambda x: int(x["raqam"]), reverse=True)
+               if b["holat"] not in ("bekor",)][:6]
     if not qismlar:
         yubor(uid, "📦 Sizda hali buyurtma yo'q.\n\n"
                    "«🤖 AI bilan buyurtma» yoki «🛍 Do'kon» dan boshlang.",
               menyu=menyu(uid))
         return
-    yubor(uid, "\n\n".join(qismlar), menyu=menyu(uid))
+    kb = tugmalar([[("📍 #" + b["raqam"] + " ni kuzatish", "kz_" + b["raqam"])] for b in faollar]) \
+        if faollar else None
+    if kb:
+        yubor(uid, "\n\n".join(qismlar), kb=kb)
+    else:
+        yubor(uid, "\n\n".join(qismlar), menyu=menyu(uid))
 
 
 def usta_buyurtmalari(uid):
@@ -630,7 +697,7 @@ def usta_ishlari(uid):
     q.append("\n💰 Yakunlangan ishlardan jami: <b>" + pul(jami) + "</b>")
     yubor(uid, "\n".join(q), menyu=USTA_MENYU)
     for b in royxat:
-        if b["holat"] in ("tasdiqlangan", "tikilmoqda", "tayyor"):
+        if b["holat"] in ("tasdiqlangan", "tikilmoqda", "tayyor", "yetkazilmoqda"):
             qatorlar = [[("✉️ Mijozga yozish", "yoz_" + b["raqam"])]]
             if b["holat"] == "tikilmoqda":
                 qatorlar.insert(0, [("✅ Tayyor bo'ldi", "tayyor_" + b["raqam"])])
@@ -715,11 +782,11 @@ def xabar(msg):
     if past.startswith("/start") and not p.get("til") and not admin_mi(uid):
         holat_tozala(uid)
         saqla()
-        yubor(uid, "🌐 Tilni tanlang · Tildi saylań · Choose your language",
+        yubor(uid, "🌐 Tilni tanlang · Тилни танланг · Tildi saylań · Choose your language",
               kb=tarjima.til_tugmalari(), tarj=False)
         return
     if past.startswith("/til") or matn == "🌐 Til":
-        yubor(uid, "🌐 Tilni tanlang · Tildi saylań · Choose your language",
+        yubor(uid, "🌐 Tilni tanlang · Тилни танланг · Tildi saylań · Choose your language",
               kb=tarjima.til_tugmalari(), tarj=False)
         return
     if past.startswith("/topish") and admin_mi(uid):
@@ -732,7 +799,7 @@ def xabar(msg):
             yubor(uid, ADMIN_SALOM, menyu=ADMIN_MENYU)
             admin.panel(uid)
         else:
-            yubor(uid, SALOM, menyu=menyu(uid))
+            salom(uid)
         return
     if past.startswith("/bekor"):
         holat_tozala(uid)
@@ -741,6 +808,18 @@ def xabar(msg):
         return
     if past.startswith("/otkaz") and bosqich == "qosh_rasm":
         admin.rasm_qabul(uid, "")
+        return
+    if past.startswith("/otkaz") and bosqich == "sharh":
+        holat_tozala(uid)
+        saqla()
+        yubor(uid, "👌 Yaxshi. Bahoyingiz saqlandi.", menyu=menyu(uid))
+        return
+    if past.startswith("/kuzat"):
+        b = DATA["buyurtmalar"].get(matn[6:].strip().lstrip("#"))
+        if b and str(b["mijoz"]) == str(uid):
+            yubor(uid, kuzatuv.kuzatish_kartasi(b))
+        else:
+            mijoz_buyurtmalari(uid)
         return
     if past.startswith("/otkaz") and bosqich == "tayyor_rasm":
         raqam = h.get("tayyor_raqam")
@@ -887,6 +966,18 @@ def xabar(msg):
         p["manzil"] = h.get("manzil") or p.get("manzil", "")
         saqla()
         dokon.sotuv_yarat(uid)
+    elif bosqich == "sharh":
+        b = DATA["buyurtmalar"].get(h.get("sharh_raqam"))
+        holat_tozala(uid)
+        if b and b.get("usta"):
+            sh = profil(b["usta"]).get("sharhlar", [])
+            for x in reversed(sh):
+                if x.get("raqam") == b["raqam"]:
+                    x["matn"] = matn[:400]
+                    break
+            yubor(b["usta"], "💬 Yangi sharh (#" + b["raqam"] + "):\n«" + matn[:400] + "»")
+        saqla()
+        yubor(uid, "✅ Sharhingiz saqlandi. Rahmat!", menyu=menyu(uid))
     elif bosqich == "narx_izoh":
         izoh_qabul(uid, matn)
     elif bosqich == "yoz":
@@ -904,7 +995,7 @@ def xabar(msg):
         saqla()
         suhbat_davom(uid, matn)
     else:
-        yubor(uid, SALOM, menyu=menyu(uid))
+        salom(uid)
 
 
 def tugma(cq):
@@ -925,7 +1016,7 @@ def tugma(cq):
             if admin_mi(uid) and p.get("rejim") != "mijoz":
                 yubor(uid, ADMIN_SALOM, menyu=ADMIN_MENYU)
             else:
-                yubor(uid, SALOM, menyu=menyu(uid))
+                salom(uid)
         return
     if data.startswith("dzkat_"):
         dokon.dizaynlar_royxati(uid, 0, data[6:])
@@ -1027,9 +1118,37 @@ def tugma(cq):
                 and b["holat"] == "yakunlandi" and not b.get("baho")):
             profil(b["usta"]).setdefault("baholar", []).append(int(ball))
             b["baho"] = int(ball)
+            kuzatuv.sharh_qosh(b["usta"], b, ball)
+            holat(uid, "sharh", sharh_raqam=raqam)
             saqla()
-            yubor(uid, "🙏 Bahoyingiz uchun rahmat!")
+            yubor(uid, "🙏 Rahmat! Endi bir-ikki og'iz sharh yozing — boshqa mijozlar "
+                       "ustani tanlashda shuni o'qiydi.\n\n<i>Yozmasangiz: /otkaz</i>")
             yubor(b["usta"], "⭐️ Sizga yangi baho: " + "⭐️" * int(ball))
+        return
+
+    if data.startswith("kz_"):
+        b = DATA["buyurtmalar"].get(data[3:])
+        if b and str(b["mijoz"]) == str(uid) or (b and admin_mi(uid)):
+            kb = None
+            if b["holat"] == "yetkazilmoqda" and str(b["mijoz"]) == str(uid):
+                kb = tugmalar([[("✅ Qabul qilib oldim", "olindi_" + b["raqam"])]])
+            elif b.get("usta") and b["holat"] in ("tasdiqlangan", "tikilmoqda", "tayyor", "yetkazilmoqda"):
+                kb = tugmalar([[("✉️ Hunarmandga yozish", "yoz_" + b["raqam"])]])
+            if b.get("tayyor_rasm"):
+                rasm_yubor(uid, b["tayyor_rasm"], kuzatuv.kuzatish_kartasi(b), kb)
+            else:
+                yubor(uid, kuzatuv.kuzatish_kartasi(b), kb=kb)
+        return
+
+    if data.startswith("olindi_"):
+        b = DATA["buyurtmalar"].get(data[7:])
+        if b and str(b["mijoz"]) == str(uid):
+            if not topshirildi(data[7:], "mijoz"):
+                yubor(uid, "Bu buyurtma allaqachon topshirilgan.")
+        return
+
+    if data.startswith("sh_"):
+        yubor(uid, kuzatuv.barcha_sharhlar(data[3:]))
         return
 
     # --- Dizaynlar va do'kon ---
@@ -1113,6 +1232,7 @@ def main():
     ])
 
     dokon.dizaynlar_ekish()
+    banner_yukla()
 
     for a in ADMINLAR:
         yubor(a, "🟢 " + PLATFORMA + " boti ishga tushdi (@" + str(nom) + ")")
