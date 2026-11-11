@@ -23,8 +23,8 @@ import alifbo
 TILLAR = {
     "uz": "🇺🇿 O'zbekcha (lotin)",
     "uz_cyr": "🇺🇿 Ўзбекча (кирилл)",
-    "kaa": "🏳️ Qaraqalpaqsha (latın)",
-    "kaa_cyr": "🏳️ Қарақалпақша (кирилл)",
+    "kaa": "Qaraqalpaqsha (latın)",
+    "kaa_cyr": "Қарақалпақша (кирилл)",
     "en": "🇬🇧 English",
 }
 TIL_NOMI_AI = {"en": "English", "kaa": "Karakalpak (Latin script, e.g. á, ó, ú, ı, ń, ǵ)"}
@@ -222,15 +222,21 @@ def _tarjima(matnlar, til):
 
     # 2) Keshda yo'q qoliplarni bitta so'rovda tarjima qilamiz
     if kerak:
-        try:
-            tarjimalar = _ai_tarjima(kerak, til)
-            with _qulf:
-                for asl, tr in zip(kerak, tarjimalar):
-                    if _yaroqli(asl, tr):
-                        k[asl] = tr
-                _kesh_saqla()
-        except Exception:
-            pass
+        # Tarjima fonda ishlaydi: 6 soniyada tayyor bo'lmasa, hozir o'zbekcha ketadi,
+        # tarjima esa keshga tushib, keyingi safar darhol ishlatiladi.
+        def _ish():
+            try:
+                tarjimalar = _ai_tarjima(kerak, til)
+                with _qulf:
+                    for asl, tr in zip(kerak, tarjimalar):
+                        if _yaroqli(asl, tr):
+                            k[asl] = tr
+                    _kesh_saqla()
+            except Exception:
+                pass
+        th = threading.Thread(target=_ish, daemon=True)
+        th.start()
+        th.join(6)
 
     # 3) Yig'amiz
     natija = []

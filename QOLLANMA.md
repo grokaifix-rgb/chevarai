@@ -54,6 +54,25 @@ Mijoz yozadi: *«To'yga ko'k adras matodan zamonaviy ko'ylak kerak»*
 → bot yetishmagan narsani so'raydi → **buyurtma varaqasi** → o'lchamlar
 (bo'y, ko'krak, bel, son) → muddat → telefon → buyurtma hunarmandlarga tarqaladi.
 
+### Mahsulot turiga mos savollar
+Bot avval nima kerakligini aniqlaydi: ko'ylak/kiyim, sumka, yubka, nimcha, kashtachilik, aksessuar
+yoki boshqa. Keyin **faqat shu turga tegishli** savollarni beradi va aytilganini qayta so'ramaydi:
+
+| Tur | Savollar | O'lchamlar |
+|---|---|---|
+| Ko'ylak / kiyim | mato, rang, fason, uzunlik, yeng, yoqa, tadbir | bo'y, ko'krak, bel, son |
+| Sumka | material, rang, hajm, shakl, dastak, cho'ntak, yopilish, bezak | — |
+| Yubka | mato, rang, fason, uzunlik, astar | bel, son |
+| Nimcha | mato, rang, fason, uzunlik, yoqa, tugma/fermuar | ko'krak, bel |
+| Kashtachilik | buyum, naqsh, rang, mato, naqsh joyi, o'lcham | — |
+| Aksessuar | turi, material, rang, dizayn, o'lcham/moslik | — |
+
+Har savolda «⏭ Farqi yo'q» tugmasi bor. Bot shunday gaplarni tushunadi: «boshqa rang»,
+«ko'ylak emas, sumka», «oldingi javobimni o'zgartirmoqchiman», «buyurtmani bekor qil»
+(avval tasdiq so'raydi), «tikuvchi bilan gaplashmoqchiman» (operatorga yo'naltiradi).
+Oxirida **yakuniy karta** ko'rsatiladi — mijoz «✅ Tasdiqlayman» bosmaguncha buyurtma
+hunarmandlarga yuborilmaydi. Narx va muddatni AI emas, hunarmand taklif qiladi.
+
 ### 👗 Dizaynlar
 Rasm bilan namunalar chiqadi. «Shu dizaynda buyurtma berish» → faqat o'lcham
 va muddat so'raladi. Qolgani AI buyurtmasi bilan bir xil: hunarmandlar narx beradi.
@@ -68,6 +87,16 @@ Belgilangan summadan katta xaridda yetkazish **bepul**.
 To'lov: karta → chek rasmi → admin tasdiqlaydi → 🚚 yo'lga chiqdi → ✅ topshirildi.
 
 ---
+
+### Buyurtma holatlari
+📝 Qoralama → ⏳ Tasdiqlash kutilmoqda → 📤 Hunarmandga yuborildi → 👀 Hunarmand ko'rib
+chiqmoqda → 💬 Narx va muddat kelishilmoqda → ✅ Tasdiqlandi → 🪡 Tikilmoqda → 🎊 Tayyor →
+🚚 Yetkazilmoqda → 📦 Yetkazildi (yoki ❌ Bekor qilindi). Mijoz taklif ostidagi «❓ Savol berish»
+bilan ustaga savol beradi; usta «❌ Rad etish» bilan buyurtmani olmasligi mumkin.
+
+### Yordam
+FAQ (narx, to'lov, kuzatish, o'zgartirish) va «📞 Operatorga yozish». Murojaat adminlarga
+boradi, admin «↩️ Javob yozish» bilan bot orqali javob beradi.
 
 ### Buyurtmani kuzatish
 «📦 Buyurtmalarim» → «📍 #1001 ni kuzatish»: 📥 Qabul qilindi → 🪡 Tikilmoqda → 🎊 Tayyor →

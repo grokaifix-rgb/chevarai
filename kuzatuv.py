@@ -11,14 +11,44 @@ Muallif: Mirzabek Shukurullayev · Tel: +998910964410 · Telegram: @diumuser
 from core import DATA, esc, profil, saqla, vaqt
 
 BOSQICHLAR = [
-    ("qabul", "📥 Qabul qilindi"),
+    ("yuborildi", "📤 Hunarmandga yuborildi"),
+    ("kelishilmoqda", "💬 Narx va muddat kelishilmoqda"),
+    ("tasdiqlandi", "✅ Tasdiqlandi"),
     ("tikilmoqda", "🪡 Tikilmoqda"),
     ("tayyor", "🎊 Tayyor"),
     ("yetkazilmoqda", "🚚 Yetkazilmoqda"),
-    ("yakunlandi", "✅ Topshirildi"),
+    ("yakunlandi", "📦 Yetkazildi"),
 ]
-_INDEKS = {"yangi": 0, "tasdiqlangan": 0, "tikilmoqda": 1, "tayyor": 2,
-           "yetkazilmoqda": 3, "yakunlandi": 4}
+_INDEKS = {"yangi": 0, "tasdiqlangan": 2, "tikilmoqda": 3, "tayyor": 4,
+           "yetkazilmoqda": 5, "yakunlandi": 6}
+
+
+def _joriy(b):
+    i = _INDEKS.get(b.get("holat"), 0)
+    if b.get("holat") == "yangi" and b.get("takliflar"):
+        i = 1
+    return i
+
+
+HOLAT_NOMI = {
+    "tasdiqlangan": "✅ Tasdiqlandi — oldindan to'lov kutilmoqda",
+    "tikilmoqda": "🪡 Tikilmoqda",
+    "tayyor": "🎊 Tayyor — yakuniy to'lov",
+    "yetkazilmoqda": "🚚 Yetkazilmoqda",
+    "yakunlandi": "📦 Yetkazildi",
+    "bekor": "❌ Bekor qilindi",
+}
+
+
+def holat_nomi(b):
+    """Texnik topshiriqdagi holat nomlari."""
+    if b.get("holat") == "yangi":
+        if b.get("takliflar"):
+            return "💬 Narx va muddat kelishilmoqda (" + str(len(b["takliflar"])) + " ta taklif)"
+        if b.get("korilmoqda"):
+            return "👀 Hunarmand ko'rib chiqmoqda"
+        return "📤 Hunarmandga yuborildi"
+    return HOLAT_NOMI.get(b.get("holat"), b.get("holat"))
 
 
 def belgila(b, bosqich):
@@ -30,10 +60,9 @@ def matn(b):
     """Buyurtma bosqichlari ro'yxati: o'tganlari ✅, hozirgisi 👉, keyingilari ▫️."""
     if b.get("holat") == "bekor":
         return "❌ Buyurtma bekor qilingan"
-    joriy = _INDEKS.get(b.get("holat"), 0)
-    vaqtlar = b.get("vaqtlar", {})
-    if "qabul" not in vaqtlar and b.get("yaratildi"):
-        vaqtlar = dict(vaqtlar, qabul=b["yaratildi"])
+    joriy = _joriy(b)
+    vaqtlar = dict(b.get("vaqtlar", {}))
+    vaqtlar.setdefault("yuborildi", vaqtlar.get("qabul") or b.get("yaratildi", ""))
     q = []
     for i, (kalit, nom) in enumerate(BOSQICHLAR):
         sana = vaqtlar.get(kalit, "")
@@ -44,9 +73,7 @@ def matn(b):
         else:
             q.append("▫️ " + nom[2:].strip())
     if b.get("holat") == "yangi":
-        q.append("\n<i>Hunarmandlar taklifi kutilmoqda"
-                 + (" (" + str(len(b.get("takliflar", {}))) + " ta keldi)" if b.get("takliflar") else "")
-                 + "</i>")
+        q.append("\n<i>" + holat_nomi(b) + "</i>")
     elif b.get("holat") == "tasdiqlangan":
         q.append("\n<i>Oldindan to'lov kutilmoqda</i>")
     elif b.get("holat") == "tikilmoqda" and b.get("muddat_kun"):

@@ -126,7 +126,7 @@ def hunarmandlar(uid):
 
 # =====================  Foydalanuvchilar (mijozlar)  =====================
 
-TIL_BELGI = {"uz": "🇺🇿", "en": "🇬🇧", "kaa": "🏳️"}
+TIL_BELGI = {"uz": "UZ", "uz_cyr": "ЎЗ", "en": "EN", "kaa": "QQ", "kaa_cyr": "ҚҚ"}
 
 
 def mijoz_kartasi(u, p):
@@ -231,7 +231,7 @@ def buyurtmalar(uid):
     import bot
     q = ["🤖 <b>Faol tikish buyurtmalari</b>\n"]
     for b in sorted(faol, key=lambda x: int(x["raqam"]), reverse=True)[:20]:
-        q.append("#" + b["raqam"] + " · " + bot.HOLAT_NOMI.get(b["holat"], b["holat"])
+        q.append("#" + b["raqam"] + " · " + bot.holat_nomi(b)
                  + (" · " + pul(b["umumiy_narx"]) if b.get("umumiy_narx") else ""))
     yetk = [b for b in faol if b["holat"] == "yetkazilmoqda"]
     kb = tugmalar([[("✅ #" + b["raqam"] + " topshirildi", "atop_" + b["raqam"])] for b in yetk[:8]]) \
@@ -302,6 +302,7 @@ DIZAYN_SAVOL = [
     ("tavsif", "📝 Qisqacha tavsif? (yo'q bo'lsa «-»)"),
     ("kategoriya", "📂 Bo'lim? (masalan: Ko'ylaklar / Nimchalar / Kurtka va chapanlar / "
                    "Sumkalar / Bosh kiyimlar)"),
+    ("uslub", "🏷 Qaysi katalog? «O'zbek» yoki «Qoraqalpoq» deb yozing"),
     ("mato", "🧵 Qanday matodan? (masalan: adras)"),
     ("rang", "🎨 Rangi? (yo'q bo'lsa «-»)"),
     ("narx", "💵 Taxminiy narx (faqat son, bilmasangiz 0):"),
@@ -311,6 +312,7 @@ MAHSULOT_SAVOL = [
     ("nom", "🛒 Mahsulot nomi?"),
     ("tavsif", "📝 Qisqacha tavsif? (yo'q bo'lsa «-»)"),
     ("kategoriya", "📂 Kategoriya? (masalan: Ayollar / Erkaklar / Bolalar / Aksessuar)"),
+    ("sotuvchi", "🏪 Sotuvchi kim? (hunarmand ismi yoki do'kon nomi; bilmasangiz «-»)"),
     ("narx", "💵 Narxi (faqat son):"),
     ("zaxira", "📏 O'lchamlar va soni?\n<i>Masalan: S:2, M:5, L:3, XL:1</i>"),
 ]
@@ -351,6 +353,8 @@ def qoshish_davom(uid, matn):
             yubor(uid, "❗️ Formatni to'g'ri yozing. Masalan: S:2, M:5, L:3")
             return
         qiymat = zaxira
+    elif kalit == "uslub":
+        qiymat = "Qoraqalpoq" if qiymat.lower().startswith(("qor", "qar", "қо", "қа", "kar")) else "O'zbek"
     elif qiymat == "-":
         qiymat = ""
 

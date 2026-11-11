@@ -14,6 +14,7 @@ Ishga tushirish:  python3 bot.py
 Muallif: Mirzabek Shukurullayev · Tel: +998910964410 · Telegram: @diumuser
 """
 
+import re
 import sys
 import time
 import traceback
@@ -24,6 +25,7 @@ import dokon
 import usta
 import tarjima
 import kuzatuv
+import suhbat
 from core import (ADMINLAR, ALOQA_TEL, ALOQA_TG, BOSH_ADMIN, DATA, KARTA,
                   KARTA_EGASI, OLDINDAN, PLATFORMA, TOKEN, adminlarga, admin_mi,
                   api, holat, holat_ol, holat_tozala, log, menyu_tugmalari,
@@ -145,53 +147,130 @@ YORDAM = (
 )
 
 
+FAQ = [
+    ("Narxni kim belgilaydi?",
+     "Narx va muddatni hunarmand taklif qiladi. AI narx yoki muddatni o'zi o'ylab topmaydi. "
+     "Siz takliflardan birini tanlaysiz."),
+    ("To'lov qanday?",
+     str(int(OLDINDAN)) + "% oldindan, qolgani kiyim tayyor bo'lgach. Kartaga o'tkazib, chek rasmini "
+     "yuborasiz — administrator tekshiradi."),
+    ("Buyurtmamni qanday kuzataman?",
+     "«📦 Buyurtmalarim» → «📍 Kuzatish». Har bosqich sanasi bilan ko'rinadi."),
+    ("Javobimni o'zgartirmoqchiman",
+     "Buyurtma kartasida «✏️ O'zgartiraman» tugmasini bosing yoki «boshqa rang» kabi yozing."),
+    ("Kiyim yoqmasa nima bo'ladi?",
+     "Hunarmandga bot orqali yozing yoki operatorga murojaat qiling — kelishib hal qilamiz."),
+]
+
+
+def yordam(uid):
+    q = [YORDAM, "", "❓ <b>Ko'p so'raladigan savollar</b>"]
+    for savol, javob in FAQ:
+        q.append("\n<b>" + savol + "</b>\n" + javob)
+    yubor(uid, "\n".join(q), kb=tugmalar([[("📞 Operatorga yozish", "opr")]]))
+
+
+def operatorga_boshla(uid, izoh=""):
+    holat(uid, "operator", operator_izoh=izoh)
+    saqla()
+    yubor(uid, "📞 Muammoingiz yoki savolingizni bitta xabarda yozing — operatorimiz javob beradi.\n"
+               "<i>Bekor qilish: /bekor</i>")
+
+
+def operatorga_yubor(uid, matn):
+    h = holat_ol(uid)
+    izoh = h.get("operator_izoh", "")
+    holat_tozala(uid)
+    saqla()
+    p = profil(uid)
+    adminlarga("📞 <b>Operatorga murojaat</b>\n"
+               "👤 <a href=\"tg://user?id=" + str(uid) + "\">" + (p.get("ism") or "Foydalanuvchi") + "</a>"
+               + (" (@" + p["username"] + ")" if p.get("username") else "") + "\n"
+               + ("<i>" + izoh + "</i>\n" if izoh else "") + "\n" + matn,
+               kb=tugmalar([[("↩️ Javob yozish", "opj_" + str(uid))]]))
+    yubor(uid, "✅ Xabaringiz operatorga yuborildi. Tez orada javob beramiz.", menyu=menyu(uid))
+
+
 # =====================  AI BO'LIMI: buyurtma yig'ish  =====================
 
 def buyurtma_boshla(uid):
-    holat(uid, "suhbat", suhbat=[], buyurtma={}, savollar=0)
+    holat(uid, "suhbat", karta=suhbat.yangi_karta())
     saqla()
     yubor(uid,
           "🤖 <b>AI bilan buyurtma</b>\n\n"
-          "Qanday kiyim kerakligini o'z so'zingiz bilan yozing.\n"
-          "Mato, rang, fason yoki qaysi tadbirga kerakligini aytsangiz — "
-          "yanada aniq bo'ladi.\n\n"
-          "<i>Masalan: «To'yga ko'k adras matodan zamonaviy ko'ylak kerak»</i>\n\n"
-          "<i>Bekor qilish uchun /bekor</i>")
+          "Nima kerakligini o'z so'zingiz bilan yozing — kiyim, sumka, kashta yoki aksessuar.\n"
+          "Men mahsulotga mos savollar berib, aniq buyurtma kartasini tuzaman.\n\n"
+          "<i>Masalan: «To'yga ko'k adras ko'ylak kerak» yoki «Adras qo'l sumka kerak»</i>\n\n"
+          "<i>Bekor qilish: /bekor</i>")
+
+
+def _karta(uid):
+    h = holat_ol(uid)
+    return h.setdefault("karta", suhbat.yangi_karta())
+
+
+def savol_ber(uid):
+    """Kartadagi yetishmagan birinchi maydonni so'raydi yoki kartani ko'rsatadi."""
+    karta = _karta(uid)
+    ks = suhbat.keyingi_savol(karta)
+    if ks is None:
+        karta["oxirgi"] = None
+        saqla()
+        varaqa_korsat(uid)
+        return
+    maydon, savol = ks
+    karta["oxirgi"] = maydon
+    saqla()
+    if maydon == "tur":
+        yubor(uid, "❓ " + savol, kb=tugmalar(suhbat.TUR_TUGMALARI))
+        return
+    yubor(uid, "❓ " + savol, kb=tugmalar([[("⏭ Farqi yo'q", "fy")]]))
 
 
 def suhbat_davom(uid, matn):
-    h = holat(uid)
-    suhbat = h.get("suhbat", [])
-    suhbat.append({"rol": "mijoz", "matn": matn})
-
-    yubor(uid, "🤖 <i>O'ylayapman...</i>")
-    til = profil(uid).get("til") or "uz"
-    natija = ai.tahlil(AI_CFG, suhbat, tarjima.ai_tili(til))
-
-    h["buyurtma"] = natija.get("buyurtma") or {}
-    savol_soni = h.get("savollar", 0)
-
-    if not natija.get("tayyor") and natija.get("savol") and savol_soni < 4:
-        savol = natija["savol"]
-        suhbat.append({"rol": "ai", "matn": savol})
-        h["suhbat"] = suhbat
-        h["savollar"] = savol_soni + 1
-        saqla()
-        # AI savolni allaqachon mijoz tilida bergan — qayta tarjima shart emas
-        if natija.get("_ai"):
-            yubor(uid, tarjima.kiril("❓ " + esc(savol), til), tarj=False)
-        else:
-            yubor(uid, "❓ " + esc(savol))
+    karta = _karta(uid)
+    amal = suhbat.niyat(matn)
+    if amal == "bekor":
+        yubor(uid, "Buyurtmani bekor qilaymi?", kb=tugmalar([
+            [("✅ Ha, bekor qilish", "v_bekor"), ("↩️ Yo'q, davom etamiz", "v_davom")]]))
         return
+    if amal == "operator":
+        operatorga_boshla(uid, "Buyurtma suhbatidan: " + matn)
+        return
+    if amal == "tahrir":
+        if karta.get("tur"):
+            yubor(uid, "✏️ Qaysi javobni o'zgartiramiz?", kb=tugmalar(suhbat.tahrir_tugmalari(karta)))
+        else:
+            savol_ber(uid)
+        return
+    if amal and amal.startswith("boshqa_"):
+        maydon = amal[7:]
+        if maydon == "mato" and karta.get("tur") in ("sumka", "aksessuar"):
+            maydon = "material"
+        if karta.get("tur") and maydon in dict(suhbat.TURLAR[karta["tur"]]["maydonlar"]):
+            karta["maydonlar"].pop(maydon, None)
+            # «boshqa rang — qizil» kabi bir xabarda yangi qiymat ham bo'lishi mumkin
+            karta["oxirgi"] = maydon
+            if "—" in matn or ":" in matn:  # «boshqa rang — qizil»
+                suhbat.javobni_qabul(AI_CFG, re.split("[—:]", matn)[-1].strip(), karta)
+            saqla()
+            savol_ber(uid)
+            return
 
-    h["suhbat"] = suhbat
+    eski_tur = karta.get("tur")
+    yubor(uid, "🤖 <i>O'ylayapman...</i>")
+    suhbat.javobni_qabul(AI_CFG, matn, karta)
+    if eski_tur and karta.get("tur") and karta["tur"] != eski_tur:
+        yubor(uid, "🔄 Tushundim — endi <b>" + suhbat.TURLAR[karta["tur"]]["nom"].lower()
+              + "</b> uchun savollar beraman.")
     saqla()
-    varaqa_korsat(uid)
+    savol_ber(uid)
 
 
 def varaqa_korsat(uid):
-    b = holat_ol(uid).get("buyurtma", {})
-    yubor(uid, "📝 <b>Buyurtma varaqasi</b>\n\n" + ai.varaqa(b) + "\n\nHammasi to'g'rimi?",
+    karta = _karta(uid)
+    yubor(uid, "📝 <b>Buyurtma kartasi</b>\n\n" + suhbat.karta_matni(karta)
+          + "\n\nHammasi to'g'rimi?",
           kb=tugmalar([
               [("✅ To'g'ri, davom etamiz", "v_ok")],
               [("✏️ O'zgartiraman", "v_tahrir")],
@@ -199,25 +278,48 @@ def varaqa_korsat(uid):
           ]))
 
 
-OLCHAM_SAVOLLARI = [
-    ("boy", "📏 Bo'yingiz necha sm? (masalan: 165)"),
-    ("kokrak", "📏 Ko'krak aylanasi necha sm? (bilmasangiz «-» yozing)"),
-    ("bel", "📏 Bel aylanasi necha sm? (bilmasangiz «-» yozing)"),
-    ("son", "📏 Son (dumba) aylanasi necha sm? (bilmasangiz «-» yozing)"),
-]
+OLCHAM_SAVOLLARI = list(suhbat.OLCHAM_SAVOL.items())
+
+
+def olchamga_otish(uid):
+    """Tur uchun kerakli o'lchamlar (sumkaga — hech biri), keyin muddat."""
+    h = holat_ol(uid)
+    karta = _karta(uid)
+    h["olcham"] = {}
+    h["olcham_royxat"] = suhbat.TURLAR.get(karta.get("tur") or "", {}).get("olcham", [])
+    saqla()
+    if h["olcham_royxat"]:
+        yubor(uid, "📏 Endi o'lchamlaringizni olamiz (aniq tikilishi uchun).")
+    olcham_sora(uid, 0)
 
 
 def olcham_sora(uid, indeks=0):
-    if indeks >= len(OLCHAM_SAVOLLARI):
+    h = holat_ol(uid)
+    royxat = h.get("olcham_royxat", [])
+    if indeks >= len(royxat):
         holat(uid, "muddat")
         saqla()
         yubor(uid, "🗓 Buyurtma qachonga kerak? "
-                   "(masalan: «2 hafta ichida» yoki «15-oktabrga»)")
+                   "(masalan: «2 hafta ichida» yoki «15-oktabrga»)\n"
+                   "<i>Aniq narx va muddatni hunarmand taklif qiladi.</i>")
         return
-    kalit, savol = OLCHAM_SAVOLLARI[indeks]
     holat(uid, "olcham", olcham_indeks=indeks)
     saqla()
-    yubor(uid, savol)
+    yubor(uid, suhbat.OLCHAM_SAVOL[royxat[indeks]])
+
+
+def yakuniy_karta(uid):
+    """Hunarmandga yuborishdan oldingi to'liq karta — mijoz tasdiqlamaguncha yuborilmaydi."""
+    h = holat_ol(uid)
+    holat(uid, "yakuniy")
+    saqla()
+    yubor(uid, "📋 <b>Yakuniy buyurtma kartasi</b>\n\n"
+          + suhbat.karta_matni(_karta(uid), h.get("olcham"), h.get("muddat"))
+          + "\n• <b>Telefon:</b> " + h.get("tel", "")
+          + "\n\nHunarmandlarga yuboraymi? Ular narx va muddat taklif qiladi.",
+          kb=tugmalar([[("✅ Tasdiqlayman, yuborilsin", "v_yubor")],
+                       [("✏️ O'zgartiraman", "v_tahrir")],
+                       [("❌ Bekor qilish", "v_bekor")]]))
 
 
 def buyurtma_yarat(uid):
@@ -230,7 +332,8 @@ def buyurtma_yarat(uid):
         "mijoz": int(uid),
         "mijoz_ism": profil(uid).get("ism") or "",
         "mijoz_tel": h.get("tel", ""),
-        "tafsilot": h.get("buyurtma", {}),
+        "tafsilot": suhbat.tafsilot(h.get("karta") or suhbat.yangi_karta()),
+        "karta": h.get("karta"),
         "olcham": h.get("olcham", {}),
         "muddat": h.get("muddat", ""),
         "dizayn": h.get("dizayn", ""),
@@ -261,6 +364,14 @@ def buyurtma_yarat(uid):
 
 
 def buyurtma_matni(b, ichki=False):
+    if b.get("karta"):
+        q = ["📝 <b>Buyurtma #" + b["raqam"] + "</b>", "",
+             suhbat.karta_matni(b["karta"], b.get("olcham"), b.get("muddat"))]
+        if b.get("dizayn"):
+            q.append("• <b>Namuna kodi:</b> " + b["dizayn"])
+        if ichki and b.get("mijoz_tel"):
+            q.append("📞 <b>Mijoz:</b> " + b["mijoz_tel"])
+        return "\n".join(q)
     q = ["📝 <b>Buyurtma #" + b["raqam"] + "</b>", "", ai.varaqa(b.get("tafsilot", {}))]
     o = b.get("olcham") or {}
     nomlar = {"boy": "Bo'y", "kokrak": "Ko'krak", "bel": "Bel", "son": "Son"}
@@ -287,7 +398,7 @@ def ustalarga_yubor(b):
             "\n\n💡 Narxingizni <b>o'z xarajatingiz + mehnatingiz</b> bo'yicha kiriting.\n"
             "Platforma o'z ustamasini alohida qo'shadi.")
     kb = tugmalar([[("💰 Narx taklif qilish", "n_" + b["raqam"])],
-                   [("⏭ O'tkazib yuborish", "skip_" + b["raqam"])]])
+                   [("❌ Rad etish", "skip_" + b["raqam"])]])
     for uid in ustalar:
         if b.get("dizayn_rasm"):
             from core import rasm_yubor
@@ -359,6 +470,9 @@ def narx_sora(uid, raqam):
         yubor(uid, "Bu buyurtma allaqachon yopilgan.")
         return
     holat(uid, "narx", narx_raqam=raqam)
+    if not b.get("korilmoqda"):
+        b["korilmoqda"] = True
+        yubor(b["mijoz"], "👀 #" + raqam + " — hunarmand buyurtmangizni ko'rib chiqmoqda.")
     saqla()
     yubor(uid, "💰 <b>#" + raqam + "</b> uchun narxingizni yozing (faqat son, so'mda).\n"
                "<i>Masalan: 500000</i>\n\nBekor qilish: /bekor")
@@ -410,6 +524,7 @@ def izoh_qabul(uid, matn):
     izoh = "" if matn.strip() == "-" else matn.strip()[:300]
     b["takliflar"][str(uid)] = {"narx": usta_narx, "mijoz_narx": mijoz_narxi(usta_narx),
                                 "kun": int(kun), "izoh": izoh, "vaqt": vaqt()}
+    kuzatuv.belgila(b, "kelishilmoqda")
     holat_tozala(uid)
     saqla()
 
@@ -424,6 +539,7 @@ def izoh_qabul(uid, matn):
                           "pf_" + str(uid))])
     if p.get("sharhlar"):
         qatorlar.append([("💬 Sharhlar (" + str(len(p["sharhlar"])) + ")", "sh_" + str(uid))])
+    qatorlar.append([("❓ Savol berish", "sav_" + raqam + "_" + str(uid))])
     qatorlar.append([("👀 Boshqa takliflarni kutaman", "kut_" + raqam)])
     yubor(b["mijoz"],
           "💰 <b>#" + raqam + " uchun yangi taklif!</b>\n\n"
@@ -457,6 +573,7 @@ def usta_tanlandi(mijoz_uid, raqam, usta_uid):
     b["umumiy_narx"] = taklif["mijoz_narx"]
     b["muddat_kun"] = taklif["kun"]
     b["holat"] = "tasdiqlangan"
+    kuzatuv.belgila(b, "tasdiqlandi")
     b["tolov"]["oldindan"] = yaxlit(taklif["mijoz_narx"] * OLDINDAN / 100.0, 1000)
     b["tolov"]["qolgan"] = taklif["mijoz_narx"] - b["tolov"]["oldindan"]
     b["tarix"].append(vaqt() + " — hunarmand tanlandi")
@@ -625,15 +742,11 @@ def ish_tayyor(usta_uid, raqam, rasm=""):
 
 # =====================  RO'YXATLAR  =====================
 
-HOLAT_NOMI = {
-    "yangi": "🕐 Takliflar kutilmoqda",
-    "tasdiqlangan": "💳 Oldindan to'lov kutilmoqda",
-    "tikilmoqda": "🪡 Tikilmoqda",
-    "tayyor": "🎊 Tayyor — yakuniy to'lov",
-    "yetkazilmoqda": "🚚 Yetkazilmoqda",
-    "yakunlandi": "✅ Topshirildi",
-    "bekor": "❌ Bekor qilingan",
-}
+HOLAT_NOMI = kuzatuv.HOLAT_NOMI
+
+
+def holat_nomi(b):
+    return kuzatuv.holat_nomi(b)
 
 
 def mijoz_buyurtmalari(uid):
@@ -643,14 +756,22 @@ def mijoz_buyurtmalari(uid):
         q = ["🤖 <b>Tikish buyurtmalari</b>\n"]
         for b in sorted(royxat, key=lambda x: int(x["raqam"]), reverse=True)[:10]:
             tur = b.get("tafsilot", {}).get("kiyim") or "buyurtma"
-            satr = "#" + b["raqam"] + " — " + tur + " · " + HOLAT_NOMI.get(b["holat"], b["holat"])
+            satr = "#" + b["raqam"] + " — " + tur + " · " + holat_nomi(b)
             if b.get("umumiy_narx"):
                 satr += " · " + pul(b["umumiy_narx"])
-            if b["holat"] == "yangi" and b["takliflar"]:
-                satr += " (" + str(len(b["takliflar"])) + " ta taklif)"
+            if b.get("usta"):
+                us = DATA["foydalanuvchilar"].get(str(b["usta"]), {})
+                satr += "\n     🪡 " + (us.get("ism") or "hunarmand") \
+                    + (" · 🗓 " + str(b["muddat_kun"]) + " kun" if b.get("muddat_kun") else "")
             q.append(satr)
         qismlar.append("\n".join(q))
 
+    hq = holat_ol(uid)
+    if hq.get("karta") and hq.get("bosqich") in ("suhbat", "olcham", "muddat", "tel", "yakuniy"):
+        nom = suhbat.TURLAR.get(hq["karta"].get("tur") or "", {}).get("nom", "buyurtma")
+        qismlar.insert(0, ("⏳ <b>Tasdiqlash kutilmoqda</b>" if hq["bosqich"] == "yakuniy"
+                           else "📝 <b>Qoralama</b>") + " — " + nom
+                       + "\n<i>Davom ettirish uchun savolga javob yozing yoki /bekor</i>")
     xarid = dokon.mening_xaridlarim(uid)
     if xarid:
         qismlar.append(xarid)
@@ -672,7 +793,8 @@ def mijoz_buyurtmalari(uid):
 
 def usta_buyurtmalari(uid):
     ochiq = [b for b in DATA["buyurtmalar"].values()
-             if b["holat"] == "yangi" and str(uid) not in b["takliflar"]]
+             if b["holat"] == "yangi" and str(uid) not in b["takliflar"]
+             and str(uid) not in b.get("rad_etganlar", [])]
     if not ochiq:
         yubor(uid, "📋 Hozircha yangi buyurtma yo'q. Yangisi kelsa darhol yuboramiz.",
               menyu=USTA_MENYU)
@@ -691,7 +813,7 @@ def usta_ishlari(uid):
     jami = 0
     for b in sorted(royxat, key=lambda x: int(x["raqam"]), reverse=True)[:15]:
         q.append("#" + b["raqam"] + " — " + pul(b["usta_narx"]) + " · "
-                 + HOLAT_NOMI.get(b["holat"], b["holat"]))
+                 + holat_nomi(b))
         if b["holat"] == "yakunlandi":
             jami += b["usta_narx"]
     q.append("\n💰 Yakunlangan ishlardan jami: <b>" + pul(jami) + "</b>")
@@ -702,7 +824,7 @@ def usta_ishlari(uid):
             if b["holat"] == "tikilmoqda":
                 qatorlar.insert(0, [("✅ Tayyor bo'ldi", "tayyor_" + b["raqam"])])
             yubor(uid, "🔧 Faol ish:\n" + buyurtma_matni(b, ichki=True)
-                  + "\n📌 " + HOLAT_NOMI.get(b["holat"], b["holat"]),
+                  + "\n📌 " + holat_nomi(b),
                   kb=tugmalar(qatorlar))
 
 
@@ -843,7 +965,7 @@ def xabar(msg):
             usta.pauza_almashtir(uid)
             return
     if past.startswith("/yordam") or matn == "ℹ️ Yordam":
-        yubor(uid, YORDAM, menyu=menyu(uid))
+        yordam(uid)
         return
     if past.startswith("/admin") or matn == "🛠 Admin panelga qaytish":
         if admin_mi(uid):
@@ -925,7 +1047,8 @@ def xabar(msg):
         suhbat_davom(uid, matn)
     elif bosqich == "olcham":
         i = h.get("olcham_indeks", 0)
-        h.setdefault("olcham", {})[OLCHAM_SAVOLLARI[i][0]] = matn
+        royxat = h.get("olcham_royxat") or [k for k, _ in OLCHAM_SAVOLLARI]
+        h.setdefault("olcham", {})[royxat[i]] = matn
         saqla()
         olcham_sora(uid, i + 1)
     elif bosqich == "muddat":
@@ -942,7 +1065,9 @@ def xabar(msg):
         if p.get("rol") != "usta":  # ustaning o'z ish telefoni o'zgarmasin
             p["tel"] = h["tel"]
         saqla()
-        buyurtma_yarat(uid)
+        yakuniy_karta(uid)
+    elif bosqich == "yakuniy":
+        yubor(uid, "Kartani tasdiqlash yoki o'zgartirish uchun yuqoridagi tugmalardan foydalaning.")
     elif bosqich == "usta_reg":
         usta_reg_davom(uid, matn)
     elif bosqich == "narx":
@@ -966,6 +1091,27 @@ def xabar(msg):
         p["manzil"] = h.get("manzil") or p.get("manzil", "")
         saqla()
         dokon.sotuv_yarat(uid)
+    elif bosqich == "operator":
+        operatorga_yubor(uid, matn)
+    elif bosqich == "opjavob" and admin_mi(uid):
+        kimga = h.get("opj")
+        holat_tozala(uid)
+        saqla()
+        yubor(int(kimga), "📞 <b>Operator javobi:</b>\n\n" + matn,
+              kb=tugmalar([[("📞 Yana yozish", "opr")]]))
+        yubor(uid, "✅ Javob yuborildi.", menyu=menyu(uid))
+    elif bosqich == "savol":
+        raqam, kimga = h.get("sav_raqam"), h.get("sav_kim")
+        b = DATA["buyurtmalar"].get(raqam)
+        holat_tozala(uid)
+        saqla()
+        if b:
+            mijozdan = str(uid) == str(b["mijoz"])
+            yubor(int(kimga), ("❓ <b>Mijoz savoli</b>" if mijozdan else "↩️ <b>Hunarmand javobi</b>")
+                  + " (#" + raqam + "):\n\n" + matn,
+                  kb=tugmalar([[("↩️ Javob berish", ("jav_" + raqam + "_" + str(uid)) if mijozdan
+                                 else ("sav_" + raqam + "_" + str(uid)))]]))
+            yubor(uid, "✅ Yuborildi.", menyu=menyu(uid))
     elif bosqich == "sharh":
         b = DATA["buyurtmalar"].get(h.get("sharh_raqam"))
         holat_tozala(uid)
@@ -1018,30 +1164,75 @@ def tugma(cq):
             else:
                 salom(uid)
         return
+    if data.startswith("dzus_"):
+        dokon.dizaynlar_royxati(uid, 0, None, data[5:])
+        return
     if data.startswith("dzkat_"):
-        dokon.dizaynlar_royxati(uid, 0, data[6:])
+        u, _, k = data[6:].partition("|")
+        dokon.dizaynlar_royxati(uid, 0, k or "*", u)
         return
 
     # --- AI buyurtma varaqasi ---
     if data == "v_ok":
-        h = holat_ol(uid)
-        if not h.get("buyurtma"):
-            buyurtma_boshla(uid)
+        if not _karta(uid).get("tur") or holat_ol(uid).get("bosqich") not in ("suhbat",):
             return
-        h["olcham"] = {}
-        saqla()
-        yubor(uid, "📏 Endi o'lchamlaringizni olamiz (aniq tikilishi uchun).")
-        olcham_sora(uid, 0)
+        if suhbat.keyingi_savol(_karta(uid)):
+            savol_ber(uid)
+            return
+        olchamga_otish(uid)
         return
     if data == "v_tahrir":
+        karta = _karta(uid)
         holat(uid, "suhbat")
         saqla()
-        yubor(uid, "✏️ Nimani o'zgartiramiz? O'zgartirishni yozing.")
+        yubor(uid, "✏️ Qaysi javobni o'zgartiramiz?", kb=tugmalar(suhbat.tahrir_tugmalari(karta)))
         return
     if data == "v_bekor":
         holat_tozala(uid)
         saqla()
         yubor(uid, "❌ Buyurtma bekor qilindi.", menyu=menyu(uid))
+        return
+    if data == "v_davom":
+        if holat_ol(uid).get("bosqich") == "suhbat":
+            savol_ber(uid)
+        return
+    if data == "v_yubor":
+        if holat_ol(uid).get("bosqich") == "yakuniy":
+            buyurtma_yarat(uid)
+        return
+    if data == "fy":
+        h = holat_ol(uid)
+        karta = h.get("karta")
+        if h.get("bosqich") == "suhbat" and karta and karta.get("oxirgi") not in (None, "tur"):
+            karta["maydonlar"][karta["oxirgi"]] = "farqi yo'q"
+            saqla()
+            savol_ber(uid)
+        return
+    if data.startswith("tur_"):
+        h = holat_ol(uid)
+        if h.get("bosqich") == "suhbat" and data[4:] in suhbat.TURLAR:
+            karta = _karta(uid)
+            suhbat.tur_ornat(karta, data[4:])
+            saqla()
+            if data[4:] == "boshqa":
+                yubor(uid, "Agar buyum ro'yxatda bo'lmasa, operatorimiz yordam beradi.",
+                      kb=tugmalar([[("📞 Operatorga yozish", "opr")]]))
+            savol_ber(uid)
+        return
+    if data.startswith("tm_"):
+        h = holat_ol(uid)
+        if h.get("karta") is None:
+            return
+        holat(uid, "suhbat")
+        karta = _karta(uid)
+        if data == "tm_tur":
+            karta["tur"] = None
+            saqla()
+            savol_ber(uid)
+            return
+        karta["maydonlar"].pop(data[3:], None)
+        saqla()
+        savol_ber(uid)
         return
 
     # --- Hunarmand ---
@@ -1049,7 +1240,37 @@ def tugma(cq):
         narx_sora(uid, data[2:])
         return
     if data.startswith("skip_"):
-        tahrirla(uid, message_id, "⏭ O'tkazib yuborildi.")
+        b = DATA["buyurtmalar"].get(data[5:])
+        if b:
+            b.setdefault("rad_etganlar", [])
+            if str(uid) not in b["rad_etganlar"]:
+                b["rad_etganlar"].append(str(uid))
+            saqla()
+        tahrirla(uid, message_id, "❌ #" + data[5:] + " buyurtmasini rad etdingiz.")
+        return
+    if data == "opr":
+        operatorga_boshla(uid)
+        return
+    if data.startswith("opj_") and admin_mi(uid):
+        holat(uid, "opjavob", opj=data[4:])
+        saqla()
+        yubor(uid, "↩️ Javobingizni yozing (foydalanuvchiga bot nomidan boradi). /bekor")
+        return
+    if data.startswith("sav_"):
+        _, raqam, usta_uid = data.split("_", 2)
+        b = DATA["buyurtmalar"].get(raqam)
+        if b and str(b["mijoz"]) == str(uid) and str(usta_uid) in b.get("takliflar", {}):
+            holat(uid, "savol", sav_raqam=raqam, sav_kim=usta_uid)
+            saqla()
+            yubor(uid, "❓ Hunarmandga savolingizni yozing:")
+        return
+    if data.startswith("jav_"):
+        _, raqam, mijoz = data.split("_", 2)
+        b = DATA["buyurtmalar"].get(raqam)
+        if b and str(mijoz) == str(b["mijoz"]) and str(uid) in b.get("takliflar", {}):
+            holat(uid, "savol", sav_raqam=raqam, sav_kim=mijoz)
+            saqla()
+            yubor(uid, "↩️ Mijozga javobingizni yozing:")
         return
     if data.startswith("tanla_"):
         _, raqam, usta_uid = data.split("_", 2)
@@ -1153,8 +1374,9 @@ def tugma(cq):
 
     # --- Dizaynlar va do'kon ---
     if data.startswith("dzsah_"):
-        _, sah, *kat = data.split("_", 2)
-        dokon.dizaynlar_royxati(uid, int(sah), kat[0] if kat else None)
+        _, sah, qolgan = data.split("_", 2)
+        u, _, k = qolgan.partition("|")
+        dokon.dizaynlar_royxati(uid, int(sah), k or "*", u or "*")
         return
     if data.startswith("dz_"):
         dokon.dizayn_tanlandi(uid, data[3:])

@@ -7,7 +7,8 @@
     "nom": "Adras tugunli sumka",
     "mato": "adras",
     "rang": "qora-oq",
-    "tavsif": "Qo'lda bog'lanadigan yumshoq sumka, cheti kumushrang munchoq popuklar bilan bezatilgan"
+    "tavsif": "Qo'lda bog'lanadigan yumshoq sumka, cheti kumushrang munchoq popuklar bilan bezatilgan",
+    "uslub": "O'zbek"
   },
   {
     "kod": "N02",
@@ -17,7 +18,8 @@
     "nom": "Rang-barang adras qo'l sumka",
     "mato": "adras, zarrin ip",
     "rang": "qizil, sariq, yashil, pushti",
-    "tavsif": "Ikki dastali ixcham sumka, matoga zarrin ip qo'shib to'qilgan"
+    "tavsif": "Ikki dastali ixcham sumka, matoga zarrin ip qo'shib to'qilgan",
+    "uslub": "O'zbek"
   },
   {
     "kod": "N03",
@@ -27,7 +29,8 @@
     "nom": "Munchoq kashtali adras nimcha",
     "mato": "adras",
     "rang": "jigarrang-oq",
-    "tavsif": "Old tomoni munchoq bilan kashtalangan, etagi osma munchoqli kalta nimcha"
+    "tavsif": "Old tomoni munchoq bilan kashtalangan, etagi osma munchoqli kalta nimcha",
+    "uslub": "O'zbek"
   },
   {
     "kod": "N04",
@@ -37,7 +40,8 @@
     "nom": "O'ralma atlas nimcha",
     "mato": "shoyi atlas",
     "rang": "to'q ko'k-oq",
-    "tavsif": "Yonidan bog'ichli o'ralma nimcha, ichki tomoni boshqa adrasdan"
+    "tavsif": "Yonidan bog'ichli o'ralma nimcha, ichki tomoni boshqa adrasdan",
+    "uslub": "O'zbek"
   },
   {
     "kod": "N05",
@@ -47,7 +51,8 @@
     "nom": "Marvaridli adras korset",
     "mato": "adras",
     "rang": "havorang-oq",
-    "tavsif": "Marvarid shoda va atlas lentalar bilan bezatilgan korset uslubidagi top"
+    "tavsif": "Marvarid shoda va atlas lentalar bilan bezatilgan korset uslubidagi top",
+    "uslub": "O'zbek"
   },
   {
     "kod": "N06",
@@ -57,7 +62,8 @@
     "nom": "Atlas ko'ylak va do'ppi",
     "mato": "xon atlas",
     "rang": "sariq, rang-barang",
-    "tavsif": "Tik yoqali, uzun yengli ko'ylak, yoqa va yeng uchiga jiyak tikilgan; mos do'ppi bilan"
+    "tavsif": "Tik yoqali, uzun yengli ko'ylak, yoqa va yeng uchiga jiyak tikilgan; mos do'ppi bilan",
+    "uslub": "O'zbek"
   },
   {
     "kod": "N07",
@@ -67,7 +73,8 @@
     "nom": "Adras korsetli kechki ko'ylak",
     "mato": "adras, shifon",
     "rang": "oq-qora",
-    "tavsif": "Oq uzun ko'ylak, beli qora adras korset bilan, etagi osma munchoqli — to'y va kechalar uchun"
+    "tavsif": "Oq uzun ko'ylak, beli qora adras korset bilan, etagi osma munchoqli — to'y va kechalar uchun",
+    "uslub": "O'zbek"
   },
   {
     "kod": "N08",
@@ -77,7 +84,8 @@
     "nom": "Munchoqli adras kurtka",
     "mato": "adras",
     "rang": "havorang-oq",
-    "tavsif": "Hajmli yengli, belbog'li kurtka, butunlay munchoq va popuk bilan bezatilgan"
+    "tavsif": "Hajmli yengli, belbog'li kurtka, butunlay munchoq va popuk bilan bezatilgan",
+    "uslub": "O'zbek"
   },
   {
     "kod": "N09",
@@ -87,7 +95,8 @@
     "nom": "Kimono uslubidagi adras kurtka",
     "mato": "adras",
     "rang": "oq, sariq, firuza",
-    "tavsif": "Qavima yoqa va qaytarma yengli, cho'ntakli erkin kurtka"
+    "tavsif": "Qavima yoqa va qaytarma yengli, cho'ntakli erkin kurtka",
+    "uslub": "O'zbek"
   },
   {
     "kod": "N10",
@@ -97,7 +106,8 @@
     "nom": "Qavima adras chapan",
     "mato": "adras",
     "rang": "qizg'ish, ko'k, jigarrang",
-    "tavsif": "Bog'ichli, qavib tikilgan yengil chapan — kundalik va sayohat uchun"
+    "tavsif": "Bog'ichli, qavib tikilgan yengil chapan — kundalik va sayohat uchun",
+    "uslub": "O'zbek"
   },
   {
     "kod": "N11",
@@ -107,7 +117,8 @@
     "nom": "Milliy naqsh applikatsiyali kostyum",
     "mato": "kostyumbop mato",
     "rang": "yashil, bej",
-    "tavsif": "Erkaklar kostyumi, orqasiga katta milliy naqsh applikatsiya qilingan"
+    "tavsif": "Erkaklar kostyumi, orqasiga katta milliy naqsh applikatsiya qilingan",
+    "uslub": "O'zbek"
   },
   {
     "kod": "N12",
@@ -117,7 +128,8 @@
     "nom": "Kumush bezakli zamonaviy do'ppi",
     "mato": "paxta",
     "rang": "oq",
-    "tavsif": "Kepka-do'ppi, kumushrang naqshli plastinkalar va zanjirlar bilan bezatilgan"
+    "tavsif": "Kepka-do'ppi, kumushrang naqshli plastinkalar va zanjirlar bilan bezatilgan",
+    "uslub": "O'zbek"
   },
   {
     "kod": "N13",
@@ -127,7 +139,8 @@
     "nom": "Milliy naqshli kepkalar",
     "mato": "paxta",
     "rang": "turli ranglarda",
-    "tavsif": "Naqsh kashtali kepkalar va munchoqli taqinchoqlar to'plami"
+    "tavsif": "Naqsh kashtali kepkalar va munchoqli taqinchoqlar to'plami",
+    "uslub": "O'zbek"
   },
   {
     "kod": "N14",
@@ -137,7 +150,8 @@
     "nom": "Toshli kelin do'ppisi",
     "mato": "baxmal",
     "rang": "qora-kumush",
-    "tavsif": "Qora baxmal do'ppi, tosh va kumush zanjirlar bilan bezatilgan — kelinlar uchun"
+    "tavsif": "Qora baxmal do'ppi, tosh va kumush zanjirlar bilan bezatilgan — kelinlar uchun",
+    "uslub": "O'zbek"
   },
   {
     "kod": "N15",
@@ -147,7 +161,8 @@
     "nom": "Qizil chapan — qoraqalpoq kashta jiyagi",
     "mato": "jun mato",
     "rang": "qizil, qora, sariq, yashil",
-    "tavsif": "Uzun qizil chapan, yoqasi va yeng uchiga qoraqalpoq uslubidagi qo'lda kashta jiyak tikilgan"
+    "tavsif": "Uzun qizil chapan, yoqasi va yeng uchiga qoraqalpoq uslubidagi qo'lda kashta jiyak tikilgan",
+    "uslub": "Qoraqalpoq"
   },
   {
     "kod": "N16",
@@ -157,7 +172,8 @@
     "nom": "Zarduzi baxmal old bezak va yeng uchliklari",
     "mato": "baxmal, shifon",
     "rang": "qizil, tillarang",
-    "tavsif": "Qizil baxmalga tillarang ip bilan geometrik naqsh tikilgan; och ko'ylak ustidan kiyiladi"
+    "tavsif": "Qizil baxmalga tillarang ip bilan geometrik naqsh tikilgan; och ko'ylak ustidan kiyiladi",
+    "uslub": "Qoraqalpoq"
   },
   {
     "kod": "N17",
@@ -167,7 +183,8 @@
     "nom": "Jinsi nimcha — qo'chqor shoxi naqshi",
     "mato": "jinsi",
     "rang": "ko'k",
-    "tavsif": "Ikki xil jinsidan, qo'chqor shoxi (müyiz) naqshi applikatsiya qilingan bog'ichli nimcha"
+    "tavsif": "Ikki xil jinsidan, qo'chqor shoxi (müyiz) naqshi applikatsiya qilingan bog'ichli nimcha",
+    "uslub": "Qoraqalpoq"
   },
   {
     "kod": "N18",
@@ -177,7 +194,8 @@
     "nom": "Tillarang naqshli atlas korset",
     "mato": "atlas, shifon",
     "rang": "jigarrang, tillarang, oq",
-    "tavsif": "Jigarrang atlas korset, tillarang kashta va kumush kamar; oq shifon ko'ylak bilan"
+    "tavsif": "Jigarrang atlas korset, tillarang kashta va kumush kamar; oq shifon ko'ylak bilan",
+    "uslub": "Qoraqalpoq"
   },
   {
     "kod": "N19",
@@ -187,7 +205,8 @@
     "nom": "Zardo'zi baxmal yoqa",
     "mato": "baxmal",
     "rang": "firuza, tillarang",
-    "tavsif": "Ko'ylak ustidan taqiladigan baxmal yoqa, zardo'zi va marvarid bilan bezatilgan"
+    "tavsif": "Ko'ylak ustidan taqiladigan baxmal yoqa, zardo'zi va marvarid bilan bezatilgan",
+    "uslub": "O'zbek"
   },
   {
     "kod": "N20",
@@ -197,7 +216,8 @@
     "nom": "Korsetli kurtka — tillarang naqsh",
     "mato": "kostyumbop mato",
     "rang": "to'q ko'k, tillarang",
-    "tavsif": "Hajmli yengli, beli bog'ichli korset kurtka, ko'kragiga tillarang naqsh tikilgan"
+    "tavsif": "Hajmli yengli, beli bog'ichli korset kurtka, ko'kragiga tillarang naqsh tikilgan",
+    "uslub": "O'zbek"
   },
   {
     "kod": "N21",
@@ -207,7 +227,8 @@
     "nom": "Milliy naqsh kashtali palto",
     "mato": "jun",
     "rang": "qora, kumush, tillarang",
-    "tavsif": "Uzun palto, yoqasi, yengi va etagiga milliy naqsh kashta qilingan; mos sharf bilan"
+    "tavsif": "Uzun palto, yoqasi, yengi va etagiga milliy naqsh kashta qilingan; mos sharf bilan",
+    "uslub": "Qoraqalpoq"
   },
   {
     "kod": "N22",
@@ -217,6 +238,7 @@
     "nom": "Kashtali belbog'",
     "mato": "jun",
     "rang": "kulrang, oq",
-    "tavsif": "Keng belbog', oq ip bilan milliy naqsh kashta qilingan; chetlari baxmal"
+    "tavsif": "Keng belbog', oq ip bilan milliy naqsh kashta qilingan; chetlari baxmal",
+    "uslub": "Qoraqalpoq"
   }
 ]

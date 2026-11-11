@@ -29,24 +29,43 @@ def _kod_tartib(d):
     return int(raqam) if raqam else 0
 
 
-def dizaynlar_royxati(uid, sahifa=0, kategoriya=None):
+USLUBLAR = ["O'zbek", "Qoraqalpoq"]
+
+
+def _uslub(d):
+    return d.get("uslub") or "O'zbek"
+
+
+def dizaynlar_royxati(uid, sahifa=0, kategoriya=None, uslub=None):
     royxat = faol_dizaynlar()
     if not royxat:
         yubor(uid, "👗 <b>Dizaynlar bo'limi</b>\n\n"
                    "Hozircha namunalar joylanmagan.\n"
-                   "Tez orada hunarmandlarimiz ishlarini shu yerga qo'shamiz.\n\n"
                    "Shu orada «🤖 AI bilan buyurtma» orqali o'z fikringizni "
                    "aytib buyurtma bersangiz bo'ladi.")
         return
 
-    # Namunalar ko'p bo'lsa — avval bo'limlar
+    # 1) O'zbek va qoraqalpoq naqshlari — alohida kataloglar
+    uslublar = sorted({_uslub(d) for d in royxat}, key=lambda u: USLUBLAR.index(u) if u in USLUBLAR else 9)
+    if uslub is None and len(uslublar) > 1:
+        q = [[(u + " naqshlari (" + str(sum(1 for d in royxat if _uslub(d) == u)) + ")", "dzus_" + u)]
+             for u in uslublar]
+        q.append([("👗 Hammasi", "dzus_*")])
+        yubor(uid, "👗 <b>Tayyor dizaynlar</b>\n\nYoqqanini tanlang — o'z o'lchamingizga "
+                   "tikib beramiz. Qaysi katalog?", kb=tugmalar(q))
+        return
+    if uslub and uslub != "*":
+        royxat = [d for d in royxat if _uslub(d) == uslub]
+    u = uslub or "*"
+
+    # 2) Bo'limlar
     katlar = sorted({d.get("kategoriya") or "Boshqa" for d in royxat})
     if kategoriya is None and len(royxat) > 5 and len(katlar) > 1:
         qatorlar = [[(k + " (" + str(sum(1 for d in royxat if (d.get("kategoriya") or "Boshqa") == k))
-                      + ")", "dzkat_" + k)] for k in katlar]
-        qatorlar.append([("👗 Hammasi", "dzkat_*")])
-        yubor(uid, "👗 <b>Tayyor dizaynlar</b>\n\nYoqqanini tanlang — o'z o'lchamingizga "
-                   "tikib beramiz. Bo'limni tanlang:", kb=tugmalar(qatorlar))
+                      + ")", "dzkat_" + u + "|" + k)] for k in katlar]
+        qatorlar.append([("👗 Hammasi", "dzkat_" + u + "|*")])
+        yubor(uid, "👗 <b>" + (u + " naqshlari" if u != "*" else "Tayyor dizaynlar")
+              + "</b>\n\nBo'limni tanlang:", kb=tugmalar(qatorlar))
         return
     if kategoriya and kategoriya != "*":
         royxat = [d for d in royxat if (d.get("kategoriya") or "Boshqa") == kategoriya]
@@ -65,7 +84,8 @@ def dizaynlar_royxati(uid, sahifa=0, kategoriya=None):
         matn = ("<b>" + d.get("nom", "Dizayn") + "</b>\n"
                 + (d.get("tavsif", "") or "") + "\n"
                 + ("🧵 Mato: " + d["mato"] + "\n" if d.get("mato") else "")
-                + ("💵 Taxminiy narx: " + pul(d["narx"]) + "\n" if d.get("narx") else ""))
+                + ("💵 Taxminiy narx: " + pul(d["narx"]) + "\n" if d.get("narx") else "")
+                + "🏷 " + _uslub(d) + " uslubi")
         kb = tugmalar([[("🧵 Shu dizaynda buyurtma berish", "dz_" + d["id"])]])
         if d.get("rasm"):
             rasm_yubor(uid, d["rasm"], matn, kb)
@@ -75,7 +95,7 @@ def dizaynlar_royxati(uid, sahifa=0, kategoriya=None):
     if len(royxat) > boshi + 5:
         yubor(uid, "Yana namunalar bor:",
               kb=tugmalar([[("⬇️ Ko'proq ko'rsatish",
-                             "dzsah_" + str(sahifa + 1) + "_" + (kategoriya or "*"))]]))
+                             "dzsah_" + str(sahifa + 1) + "_" + u + "|" + (kategoriya or "*"))]]))
 
 
 def dizayn_tanlandi(uid, dizayn_id):
@@ -83,20 +103,14 @@ def dizayn_tanlandi(uid, dizayn_id):
     if not d:
         yubor(uid, "Bu dizayn topilmadi.")
         return
-    tafsilot = {
-        "kiyim": d.get("kiyim") or d.get("nom", ""),
-        "mato": d.get("mato", ""),
-        "rang": d.get("rang", ""),
-        "fason": d.get("fason", "namuna bo'yicha"),
-        "izoh": "Tayyor dizayn: " + d.get("nom", "") + " (kod: " + dizayn_id + ")",
-    }
-    holat(uid, "olcham", buyurtma=tafsilot, olcham={}, olcham_indeks=0,
-          dizayn=dizayn_id, dizayn_rasm=d.get("rasm", ""))
+    import suhbat
+    karta = suhbat.dizayndan(d)
+    holat(uid, "suhbat", karta=karta, dizayn=dizayn_id, dizayn_rasm=d.get("rasm", ""))
     saqla()
-    yubor(uid, "✅ <b>" + d.get("nom", "Dizayn") + "</b> tanlandi.\n\n"
-               "📏 Endi o'lchamlaringizni olamiz — shunda aynan sizga tikiladi.")
+    yubor(uid, "✅ <b>" + d.get("nom", "Dizayn") + "</b> tanlandi.\n"
+               "Bir nechta aniqlashtiruvchi savol beraman.")
     import bot
-    bot.olcham_sora(uid, 0)
+    bot.savol_ber(uid)
 
 
 # =====================  DO'KON: mahsulotlar  =====================
@@ -139,6 +153,7 @@ def mahsulotlar_royxati(uid, kategoriya="*"):
         matn = ("<b>" + m.get("nom", "") + "</b>\n"
                 + (m.get("tavsif", "") or "") + "\n\n"
                 + "💵 Narx: <b>" + pul(m.get("narx", 0)) + "</b>\n"
+                + "🏪 Sotuvchi: " + (m.get("sotuvchi") or "Chevar AI do'koni") + "\n"
                 + "📏 Mavjud o'lchamlar: " + (olch or "-"))
         kb = tugmalar([[("🛒 Savatga qo'shish", "mh_" + m["id"])]])
         if m.get("rasm"):
@@ -437,7 +452,13 @@ def dizaynlar_ekish():
     qoshildi = 0
     for d in royxat:
         kod = d["kod"]
-        if kod in DATA["dizaynlar"] or kod in DATA.get("ochirilgan_dizaynlar", []):
+        if kod in DATA["dizaynlar"]:
+            mavjud = DATA["dizaynlar"][kod]
+            if d.get("uslub") and not mavjud.get("uslub"):
+                mavjud["uslub"] = d["uslub"]
+                qoshildi += 1
+            continue
+        if kod in DATA.get("ochirilgan_dizaynlar", []):
             continue
         try:
             rasm = rasm_yuklash(BOSH_ADMIN, os.path.join(papka, "rasmlar", "dizaynlar", d["fayl"]))
@@ -447,7 +468,7 @@ def dizaynlar_ekish():
         DATA["dizaynlar"][kod] = {
             "id": kod, "nom": d["nom"], "tavsif": d.get("tavsif", ""), "mato": d.get("mato", ""),
             "rang": d.get("rang", ""), "kiyim": d.get("kiyim", ""), "kategoriya": d.get("kategoriya", ""),
-            "narx": 0, "rasm": rasm, "faol": True, "qoshildi": vaqt(),
+            "narx": 0, "rasm": rasm, "faol": True, "qoshildi": vaqt(), "uslub": d.get("uslub", "O'zbek"),
         }
         qoshildi += 1
     if qoshildi:

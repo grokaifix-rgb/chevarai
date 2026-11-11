@@ -256,16 +256,24 @@ def ai_tahlil(cfg, suhbat, tizim=None, json_parse=True):
         }
         # Bepul limit har model uchun alohida (daqiqasiga ~5 so'rov) — bittasi band
         # bo'lsa (429/503), navbatdagi zaxira modelga o'tamiz.
+        # Mijoz kutib qolmasin: hammasi bo'lib 20 soniya, keyin offline rejim
+        import time as _t
+        tugash = _t.time() + float(cfg.get("ai_vaqt") or 20)
         j = None
         for m in [model] + [z for z in GEMINI_ZAXIRA if z != model]:
+            qoldi = tugash - _t.time()
+            if qoldi < 3:
+                break
             url = ("https://generativelanguage.googleapis.com/v1beta/models/"
                    + m + ":generateContent?key=" + key)
             try:
-                j = _post(url, body, {"Content-Type": "application/json"})
+                j = _post(url, body, {"Content-Type": "application/json"}, timeout=min(float(cfg.get("ai_chaqiruv") or 8), qoldi))
                 break
             except urllib.error.HTTPError as e:
                 if e.code not in (429, 500, 503):
                     raise
+            except Exception:
+                continue  # vaqt tugadi yoki tarmoq — keyingi model
         if j is None:
             raise ValueError("Barcha Gemini modellari band")
         bolaklar = j["candidates"][0]["content"].get("parts") or []
