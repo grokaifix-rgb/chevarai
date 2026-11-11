@@ -12,8 +12,8 @@ __pycache__/
 *.pyc
 venv/
 .DS_Store
-boshlangich-data.json
 
 # Taqdimot va nutq fayllari (kod emas)
 Chevar_AI_*
 .env.railway
+boshlangich-data.json
