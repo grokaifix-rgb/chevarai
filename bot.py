@@ -26,6 +26,7 @@ import usta
 import tarjima
 import kuzatuv
 import suhbat
+import zaxira
 from core import (ADMINLAR, ALOQA_TEL, ALOQA_TG, BOSH_ADMIN, DATA, KARTA,
                   KARTA_EGASI, OLDINDAN, PLATFORMA, TOKEN, adminlarga, admin_mi,
                   api, holat, holat_ol, holat_tozala, log, menyu_tugmalari,
@@ -78,7 +79,7 @@ ADMIN_MENYU = menyu_tugmalari([
     ["🤖 Tikish buyurtmalari", "🛍 Do'kon buyurtmalari"],
     ["🛒 Mahsulot qo'shish", "👗 Dizayn qo'shish"],
     ["🪡 Hunarmandlar", "👥 Foydalanuvchilar"],
-    ["📋 Ro'yxat"],
+    ["📋 Ro'yxat", "💾 Zaxira"],
     ["👤 Mijoz rejimiga o'tish"],
 ])
 
@@ -867,6 +868,9 @@ def xabar(msg):
     bosqich = h.get("bosqich", "")
 
     # --- Rasm keldi ---
+    if "document" in msg and bosqich == "tiklash" and admin_mi(uid):
+        zaxira.fayl_qabul(uid, msg)
+        return
     if "photo" in msg or "document" in msg:
         file_id = msg["photo"][-1]["file_id"] if "photo" in msg else ""
         if bosqich == "chek":
@@ -1011,6 +1015,12 @@ def xabar(msg):
         if matn == "📋 Ro'yxat":
             admin.kontent(uid)
             return
+    if (past.startswith("/zaxira") or matn == "💾 Zaxira") and admin_mi(uid):
+        zaxira.zaxira_yubor(uid)
+        return
+    if past.startswith("/tiklash") and admin_mi(uid):
+        zaxira.tiklash_boshla(uid)
+        return
     if past.startswith("/ochir") and admin_mi(uid):
         admin.ochir(uid, matn[6:].strip())
         return
@@ -1248,6 +1258,9 @@ def tugma(cq):
             saqla()
         tahrirla(uid, message_id, "❌ #" + data[5:] + " buyurtmasini rad etdingiz.")
         return
+    if data in ("tik_ha", "tik_yoq") and admin_mi(uid):
+        zaxira.tiklash_tasdiq(uid, data == "tik_ha")
+        return
     if data == "opr":
         operatorga_boshla(uid)
         return
@@ -1461,6 +1474,7 @@ def main():
 
     while True:
         try:
+            zaxira.kunlik_tekshir()
             r = api("getUpdates", offset=DATA["offset"] + 1, timeout=50,
                     allowed_updates=["message", "callback_query"])
             if not r or not r.get("ok"):
