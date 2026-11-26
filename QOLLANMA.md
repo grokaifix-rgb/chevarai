@@ -10,6 +10,25 @@ Botda **uch bo'lim** bor:
 
 ---
 
+## 📱 Ilova (Telegram Mini App)
+
+Bot ichida ochiladigan ilova — Play Market/App Store kerak emas. Ochish: bot pastidagi
+**«📱 Ilova»** tugmasi yoki /start dagi «📱 Ilovani ochish». Manzil:
+https://chevar-ai-production.up.railway.app (faqat Telegram ichida ishlaydi).
+
+Ilovada botdagi hamma narsa bor: AI buyurtma (bosqichli shakl + AI tahlil), dizaynlar,
+do'kon va savat, buyurtmalarni kuzatish, takliflar, chek yuklash, baho va sharh, kataloglar,
+o'lcham maslahati, hunarmand paneli (taklif, tayyor rasmi, portfolio, dam olish) va admin
+paneli (to'lovlar chek rasmi bilan, buyurtmalar, do'kon, hunarmandlar, foydalanuvchilar,
+mahsulot/dizayn/dars qo'shish, zaxira).
+
+Qo'shimcha: ❤️ sevimlilar, 📏 saqlangan o'lchamlar (buyurtmada bir bosishda), 🪡 hunarmandlar
+katalogi (reyting, portfolio, sharhlar), 🔍 umumiy qidiruv, Telegram tungi rejimiga moslashadi.
+
+Texnik: `ilova.py` (server, bot bilan bitta jarayonda), `ilova/` (sahifa). Railway'da
+`PORT=8080`, `WEBAPP_URL` o'zgaruvchilari. Kompyuterda sinash: `python3 _dev/ishga.py`
+(Telegramga xabar yubormaydi) → http://localhost:8765/?dev=<telegram_id>.
+
 ## 1. Botni ishga tushirish
 
 ### Uy kompyuterida
