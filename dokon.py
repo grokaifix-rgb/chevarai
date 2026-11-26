@@ -454,7 +454,14 @@ def dizaynlar_ekish():
         kod = d["kod"]
         if kod in DATA["dizaynlar"]:
             mavjud = DATA["dizaynlar"][kod]
-            if d.get("uslub") and not mavjud.get("uslub"):
+            # Katalog yangilangan bo'lsa (v oshgan) — matn va bo'limlarni yangilaymiz, rasm qoladi
+            if d.get("v", 1) > mavjud.get("v", 1):
+                for k in ("nom", "tavsif", "mato", "rang", "kiyim", "kategoriya", "uslub"):
+                    if d.get(k):
+                        mavjud[k] = d[k]
+                mavjud["v"] = d["v"]
+                qoshildi += 1
+            elif d.get("uslub") and not mavjud.get("uslub"):
                 mavjud["uslub"] = d["uslub"]
                 qoshildi += 1
             continue
@@ -469,6 +476,7 @@ def dizaynlar_ekish():
             "id": kod, "nom": d["nom"], "tavsif": d.get("tavsif", ""), "mato": d.get("mato", ""),
             "rang": d.get("rang", ""), "kiyim": d.get("kiyim", ""), "kategoriya": d.get("kategoriya", ""),
             "narx": 0, "rasm": rasm, "faol": True, "qoshildi": vaqt(), "uslub": d.get("uslub", "O'zbek"),
+            "v": d.get("v", 1),
         }
         qoshildi += 1
     if qoshildi:
