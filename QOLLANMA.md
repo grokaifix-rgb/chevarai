@@ -88,6 +88,22 @@ To'lov: karta → chek rasmi → admin tasdiqlaydi → 🚚 yo'lga chiqdi → �
 
 ---
 
+### 📚 Kataloglar
+- **🧵 Milliy matolar** — atlas, adras, beqasam, shoyi, baxmal, alacha, chit, qizil movut:
+  tarkibi, xususiyati, qaysi kiyimga mosligi, parvarishi. «Shu matodan buyurtma» — mato
+  kartaga oldindan yoziladi.
+- **📐 O'lchamlar** — ayollar (42–56), erkaklar (46–56), bolalar (bo'y 104–152) jadvallari va
+  «o'zimni qanday o'lchayman» yo'riqnomasi.
+- **🎓 Hunarmandchilik akademiyasi** — kashtachilik, zardo'zlik, ko'rpachado'zlik, tikuvchilik
+  video darslari. Admin: Kataloglar → «➕ Akademiyaga dars qo'shish» → hunar → nom → tavsif →
+  video fayl yoki havola. Dars yo'q bo'limda YouTube qidiruviga havola chiqadi.
+
+### O'lcham bo'yicha maslahat
+Buyurtmada o'lcham so'ralganda «🤖 O'lchamni maslahat bering» tugmasi bor: kim uchun (ayol,
+erkak, bola) → bo'y → vazn. Bot jadvaldan tavsiya va 2–3 variant beradi; mijoz tanlagani
+kartaga yoziladi (masalan «48 (L) ayollar», ko'krak/bel/son jadvaldan). Bu taxminiy —
+aniq o'lchamni usta primerkada tekshiradi.
+
 ### Buyurtma holatlari
 📝 Qoralama → ⏳ Tasdiqlash kutilmoqda → 📤 Hunarmandga yuborildi → 👀 Hunarmand ko'rib
 chiqmoqda → 💬 Narx va muddat kelishilmoqda → ✅ Tasdiqlandi → 🪡 Tikilmoqda → 🎊 Tayyor →

@@ -27,6 +27,7 @@ import tarjima
 import kuzatuv
 import suhbat
 import zaxira
+import katalog
 from core import (ADMINLAR, ALOQA_TEL, ALOQA_TG, BOSH_ADMIN, DATA, KARTA,
                   KARTA_EGASI, OLDINDAN, PLATFORMA, TOKEN, adminlarga, admin_mi,
                   api, holat, holat_ol, holat_tozala, log, menyu_tugmalari,
@@ -61,6 +62,7 @@ MIJOZ_MENYU = menyu_tugmalari([
     ["🤖 AI bilan buyurtma"],
     ["👗 Dizaynlar", "🛍 Do'kon"],
     ["🛒 Savatim", "📦 Buyurtmalarim"],
+    ["📚 Kataloglar"],
     ["ℹ️ Yordam", "🌐 Til"],
     ["🪡 Men hunarmandman"],
 ])
@@ -70,7 +72,7 @@ USTA_MENYU = menyu_tugmalari([
     ["🧾 Mening ishlarim", "👤 Profilim"],
     ["🖼 Portfolio", "⏸ Dam olish"],
     ["🛍 Do'kon", "🤖 AI bilan buyurtma"],
-    ["🌐 Til"],
+    ["📚 Kataloglar", "🌐 Til"],
 ])
 
 # Admin uchun butunlay alohida panel — mijoz tugmalari aralashmaydi
@@ -89,6 +91,7 @@ MIJOZ_MENYU_ADMIN = menyu_tugmalari([
     ["🤖 AI bilan buyurtma"],
     ["👗 Dizaynlar", "🛍 Do'kon"],
     ["🛒 Savatim", "📦 Buyurtmalarim"],
+    ["📚 Kataloglar"],
     ["🛠 Admin panelga qaytish"],
 ])
 
@@ -306,7 +309,10 @@ def olcham_sora(uid, indeks=0):
         return
     holat(uid, "olcham", olcham_indeks=indeks)
     saqla()
-    yubor(uid, suhbat.OLCHAM_SAVOL[royxat[indeks]])
+    kb = tugmalar([[("🤖 O'lchamni maslahat bering", "msb")],
+                   [("📐 O'lcham jadvali", "oj_menu"), ("📏 Qanday o'lchayman?", "oj_qanday")]]) \
+        if indeks == 0 else None
+    yubor(uid, suhbat.OLCHAM_SAVOL[royxat[indeks]], kb=kb)
 
 
 def yakuniy_karta(uid):
@@ -868,6 +874,9 @@ def xabar(msg):
     bosqich = h.get("bosqich", "")
 
     # --- Rasm keldi ---
+    if bosqich == "dars" and admin_mi(uid) and ("video" in msg or "document" in msg):
+        katalog.dars_davom(uid, msg, "")
+        return
     if "document" in msg and bosqich == "tiklash" and admin_mi(uid):
         zaxira.fayl_qabul(uid, msg)
         return
@@ -1015,6 +1024,9 @@ def xabar(msg):
         if matn == "📋 Ro'yxat":
             admin.kontent(uid)
             return
+    if past.startswith("/katalog") or matn == "📚 Kataloglar":
+        katalog.kataloglar(uid)
+        return
     if (past.startswith("/zaxira") or matn == "💾 Zaxira") and admin_mi(uid):
         zaxira.zaxira_yubor(uid)
         return
@@ -1101,6 +1113,10 @@ def xabar(msg):
         p["manzil"] = h.get("manzil") or p.get("manzil", "")
         saqla()
         dokon.sotuv_yarat(uid)
+    elif bosqich == "maslahat":
+        katalog.maslahat_matn(uid, matn)
+    elif bosqich == "dars" and admin_mi(uid):
+        katalog.dars_davom(uid, msg, matn)
     elif bosqich == "operator":
         operatorga_yubor(uid, matn)
     elif bosqich == "opjavob" and admin_mi(uid):
@@ -1257,6 +1273,54 @@ def tugma(cq):
                 b["rad_etganlar"].append(str(uid))
             saqla()
         tahrirla(uid, message_id, "❌ #" + data[5:] + " buyurtmasini rad etdingiz.")
+        return
+    # --- Kataloglar ---
+    if data == "kt_mato":
+        katalog.matolar_royxati(uid)
+        return
+    if data in ("kt_olcham", "oj_menu"):
+        katalog.olchamlar(uid)
+        return
+    if data == "kt_akad":
+        katalog.akademiya(uid)
+        return
+    if data == "kt_dq" and admin_mi(uid):
+        katalog.dars_qosh_boshla(uid)
+        return
+    if data.startswith("dq_") and admin_mi(uid):
+        katalog.dars_hunar(uid, int(data[3:]))
+        return
+    if data.startswith("ak_"):
+        katalog.hunar_darslari(uid, int(data[3:]))
+        return
+    if data.startswith("oj_"):
+        katalog.olchamlar(uid, data[3:])
+        return
+    if data.startswith("mtb_"):
+        buyurtma_boshla(uid)
+        karta = _karta(uid)
+        karta["maydonlar"].update({"mato": data[4:], "material": data[4:]})
+        saqla()
+        savol_ber(uid)
+        return
+    if data.startswith("mt_"):
+        katalog.mato_korsat(uid, data[3:])
+        return
+    if data == "msb":
+        if holat_ol(uid).get("bosqich") == "olcham":
+            katalog.maslahat_boshla(uid)
+        return
+    if data.startswith("ms_"):
+        katalog.maslahat_jins(uid, data[3:])
+        return
+    if data.startswith("mv_"):
+        h = holat_ol(uid)
+        if h.get("bosqich") != "maslahat":
+            return
+        if katalog.variant_tanlandi(uid, data[3:]):
+            olcham_sora(uid, len(h.get("olcham_royxat", [])))  # o'lchamlar to'ldi → muddat
+        else:
+            olcham_sora(uid, 0)
         return
     if data in ("tik_ha", "tik_yoq") and admin_mi(uid):
         zaxira.tiklash_tasdiq(uid, data == "tik_ha")

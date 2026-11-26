@@ -128,7 +128,7 @@ OLCHAM_SAVOL = {
     "bel": "📏 Bel aylanasi necha sm? (bilmasangiz «-» yozing)",
     "son": "📏 Son (dumba) aylanasi necha sm? (bilmasangiz «-» yozing)",
 }
-OLCHAM_NOMI = {"boy": "Bo'y", "kokrak": "Ko'krak", "bel": "Bel", "son": "Son"}
+OLCHAM_NOMI = {"razmer": "O'lcham", "boy": "Bo'y", "kokrak": "Ko'krak", "bel": "Bel", "son": "Son"}
 
 # ---------------------------------------------------------------- kalit so'zlar
 TUR_SOZLAR = {

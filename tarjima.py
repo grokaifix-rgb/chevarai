@@ -54,6 +54,7 @@ LUGAT = {
     "👗 Dizayn qo'shish": {"kaa": "👗 Dizayn qosıw", "en": "👗 Add design"},
     "🪡 Hunarmandlar": {"kaa": "🪡 Sheberler", "en": "🪡 Artisans"},
     "👥 Foydalanuvchilar": {"kaa": "👥 Paydalanıwshılar", "en": "👥 Users"},
+    "📚 Kataloglar": {"kaa": "📚 Katalogler", "en": "📚 Catalogs"},
     "💾 Zaxira": {"kaa": "💾 Zaxira", "en": "💾 Backup"},
     "📋 Ro'yxat": {"kaa": "📋 Dizim", "en": "📋 Catalog list"},
     "👤 Mijoz rejimiga o'tish": {"kaa": "👤 Klient rejimine ótiw", "en": "👤 Switch to customer view"},
