@@ -256,6 +256,33 @@ def _tarjima(matnlar, til):
     return natija
 
 
+def tez(matnlar, til):
+    """Ilova uchun: faqat tayyor (keshdagi) tarjimani qaytaradi, kutmaydi.
+    Yo'q bo'lganlari fonda tarjima qilinib, keyingi safar tayyor bo'ladi."""
+    if til == "uz" or not matnlar:
+        return list(matnlar)
+    if til == "uz_cyr":
+        return [alifbo.kiril_uz(m) for m in matnlar]
+    asos = "kaa" if til == "kaa_cyr" else til
+    k = _kesh().get(asos, {})
+    natija, yoq = [], []
+    for m in matnlar:
+        q, r = _qolip(m or "")
+        if m in LUGAT:
+            natija.append(LUGAT[m][asos])
+        elif q in k:
+            natija.append(_toldir(k[q], r))
+        else:
+            natija.append(m)
+            if m and re.search(r"[A-Za-z]", m):
+                yoq.append(m)
+    if yoq:
+        threading.Thread(target=lambda: tarjima(yoq, asos), daemon=True).start()
+    if til == "kaa_cyr":
+        natija = [alifbo.kiril_kaa(x) for x in natija]
+    return natija
+
+
 def til_tugmalari():
     return {"inline_keyboard": [[{"text": nom, "callback_data": "til_" + kod}]
                                 for kod, nom in TILLAR.items()]}

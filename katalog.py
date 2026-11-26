@@ -178,6 +178,28 @@ def maslahat_matn(uid, matn):
     _variantlar(uid)
 
 
+def tavsiya(jins, boy, vazn=0):
+    """Ilova va bot uchun umumiy: (izoh, [variantlar]) — har variant {indeks, nom, tavsiya, olcham{}}."""
+    if jins == "bola":
+        i = min(range(len(BOLA)), key=lambda k: abs(BOLA[k][0] - boy))
+        v = []
+        for j in [j for j in (i, i + 1) if j < len(BOLA)]:
+            b, kk, be, s = BOLA[j]
+            v.append({"indeks": j, "nom": "bolalar " + str(b), "tavsiya": j == i,
+                      "olcham": {"boy": boy, "kokrak": kk, "bel": be, "son": s}})
+        return "Bo'yi " + str(boy) + " sm — eng yaqin o'lcham " + str(BOLA[i][0]) + ".", v
+    qator = AYOL if jins == "ayol" else ERKAK
+    i = _vazndan(jins, vazn)
+    v = []
+    for j in [j for j in (i - 1, i, i + 1) if 0 <= j < len(qator)]:
+        r, x, kk, be, s = qator[j]
+        v.append({"indeks": j, "nom": r + " (" + x + ")" + (" ayollar" if jins == "ayol" else " erkaklar"),
+                  "tavsiya": j == i, "olcham": {"boy": boy, "kokrak": kk, "bel": be, "son": s}})
+    r, x, kk, be, s = qator[i]
+    return ("Bo'y " + str(boy) + " sm, vazn " + str(vazn) + " kg bo'yicha taxminan " + r + " (" + x
+            + ") mos: ko'krak " + str(kk) + ", bel " + str(be) + ", son " + str(s) + " sm."), v
+
+
 def _variantlar(uid):
     h = holat_ol(uid)
     m = h["maslahat"]

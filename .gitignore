@@ -17,3 +17,5 @@ venv/
 Chevar_AI_*
 .env.railway
 boshlangich-data.json
+_dev/
+.claude/

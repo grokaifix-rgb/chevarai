@@ -264,12 +264,21 @@ def rasm_yubor(chat_id, file_id, matn="", kb=None):
     return api("sendPhoto", **p)
 
 
+BOT_USERNAME = ""
+QULF = threading.RLock()  # bot sikli va ilova (HTTP) bir vaqtda bazaga tegmasligi uchun
+
+
 def rasm_yuklash(chat_id, yol):
     """Diskdagi rasmni Telegramga yuklaydi va uning file_id sini qaytaradi."""
+    with open(yol, "rb") as f:
+        return rasm_bayt_yuklash(chat_id, f.read(), os.path.basename(yol))
+
+
+def rasm_bayt_yuklash(chat_id, rasm, nom="rasm.jpg", ochir=True):
+    """Rasm baytlarini Telegramga yuklab file_id oladi (ochir=True — xabar darhol o'chiriladi)."""
     import uuid
     chegara = uuid.uuid4().hex
-    with open(yol, "rb") as f:
-        rasm = f.read()
+    yol = nom
     tana = (("--" + chegara + "\r\nContent-Disposition: form-data; name=\"chat_id\"\r\n\r\n"
              + str(chat_id) + "\r\n--" + chegara + "\r\nContent-Disposition: form-data; "
              "name=\"photo\"; filename=\"" + os.path.basename(yol) + "\"\r\n"
@@ -280,7 +289,8 @@ def rasm_yuklash(chat_id, yol):
     with urllib.request.urlopen(req, timeout=90, context=SSL_CTX) as r:
         j = json.loads(r.read().decode("utf-8"))
     xabar = j["result"]
-    api("deleteMessage", chat_id=chat_id, message_id=xabar["message_id"])
+    if ochir:
+        api("deleteMessage", chat_id=chat_id, message_id=xabar["message_id"])
     return xabar["photo"][-1]["file_id"]
 
 

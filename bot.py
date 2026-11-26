@@ -96,6 +96,13 @@ MIJOZ_MENYU_ADMIN = menyu_tugmalari([
 ])
 
 
+def ilova_tugmasi():
+    import os as _os
+    from core import CFG as _cfg
+    url = _os.getenv("WEBAPP_URL") or _cfg.get("webapp_url")
+    return {"inline_keyboard": [[{"text": "📱 Ilovani ochish", "web_app": {"url": url}}]]} if url else None
+
+
 def salom(uid):
     """Banner rasm + salom matni + menyu."""
     banner = DATA.get("media", {}).get("banner")
@@ -104,8 +111,16 @@ def salom(uid):
         r = _ry(uid, banner)
         if r:
             yubor(uid, SALOM, menyu=menyu(uid))
+            _ilova_taklif(uid)
             return
     yubor(uid, SALOM, menyu=menyu(uid))
+    _ilova_taklif(uid)
+
+
+def _ilova_taklif(uid):
+    kb = ilova_tugmasi()
+    if kb:
+        yubor(uid, "📱 Hammasi ilovada ham bor — rasmlar, savat va buyurtmalar bir ekranda.", kb=kb)
 
 
 def banner_yukla():
@@ -621,50 +636,73 @@ def chek_sora(uid, raqam, tur="oldindan"):
     yubor(uid, "📸 To'lov chekining rasmini (yoki skrinshotini) shu yerga yuboring.")
 
 
+def _msg_rasm(msg):
+    if msg.get("photo"):
+        return msg["photo"][-1]["file_id"]
+    return (msg.get("document") or {}).get("file_id", "")
+
+
 def chek_qabul(uid, msg):
     h = holat_ol(uid)
     raqam = h.get("chek_raqam")
     tur = h.get("chek_tur", "oldindan")
-    b = DATA["buyurtmalar"].get(raqam)
     holat_tozala(uid)
-    if not b:
+    chek_saqla(uid, raqam, tur, _msg_rasm(msg), rasmmi=bool(msg.get("photo")))
+
+
+def chek_saqla(uid, raqam, tur, file_id, rasmmi=True):
+    """Tikish buyurtmasi cheki (bot yoki ilovadan). True — qabul qilindi."""
+    b = DATA["buyurtmalar"].get(raqam)
+    if not b or str(b["mijoz"]) != str(uid):
         saqla()
-        return
+        return False
     b["tolov"]["holat"] = ("oldindan_tekshiruvda" if tur == "oldindan"
                            else "qolgan_tekshiruvda")
+    b["tolov"]["chek_" + tur] = file_id
     saqla()
     yubor(uid, "✅ Chek qabul qilindi. Tekshirilgach xabar beramiz.", menyu=menyu(uid))
-
     summa = b["tolov"]["oldindan"] if tur == "oldindan" else b["tolov"]["qolgan"]
+    izoh = ("💳 <b>To'lov cheki</b> — #" + raqam + "\n"
+            "Tur: " + ("oldindan" if tur == "oldindan" else "yakuniy") + "\n"
+            "Summa: <b>" + pul(summa) + "</b>\nMijoz: <code>" + str(uid) + "</code>")
+    kb = tugmalar([[("✅ To'lov tasdiqlandi", "tol_" + raqam + "_" + tur),
+                    ("❌ Rad", "tolrad_" + raqam + "_" + tur)]])
+    _adminlarga_chek(file_id, rasmmi, izoh, kb)
+    return True
+
+
+def _adminlarga_chek(file_id, rasmmi, izoh, kb):
     for a in ADMINLAR:
-        api("forwardMessage", chat_id=a, from_chat_id=uid, message_id=msg["message_id"])
-        yubor(a, "💳 <b>To'lov cheki</b> — #" + raqam + "\n"
-                 "Tur: " + ("oldindan" if tur == "oldindan" else "yakuniy") + "\n"
-                 "Summa: <b>" + pul(summa) + "</b>\n"
-                 "Mijoz: <code>" + str(uid) + "</code>",
-              kb=tugmalar([[("✅ To'lov tasdiqlandi", "tol_" + raqam + "_" + tur),
-                            ("❌ Rad", "tolrad_" + raqam + "_" + tur)]]))
+        if file_id and rasmmi:
+            rasm_yubor(a, file_id, izoh, kb)
+        else:
+            if file_id:
+                api("sendDocument", chat_id=a, document=file_id)
+            yubor(a, izoh, kb=kb)
 
 
 def sotuv_chek_qabul(uid, msg):
     h = holat_ol(uid)
     raqam = h.get("schek_raqam")
-    s = DATA["sotuvlar"].get(raqam)
     holat_tozala(uid)
-    if not s:
+    sotuv_chek_saqla(uid, raqam, _msg_rasm(msg), rasmmi=bool(msg.get("photo")))
+
+
+def sotuv_chek_saqla(uid, raqam, file_id, rasmmi=True):
+    s = DATA["sotuvlar"].get(raqam)
+    if not s or str(s["mijoz"]) != str(uid):
         saqla()
-        return
+        return False
     s["holat"] = "tekshiruvda"
+    s["chek"] = file_id
     saqla()
-    yubor(uid, "✅ Chek qabul qilindi. Tekshirilgach buyurtmangiz jo'natiladi.",
-          menyu=menyu(uid))
-    for a in ADMINLAR:
-        api("forwardMessage", chat_id=a, from_chat_id=uid, message_id=msg["message_id"])
-        yubor(a, "💳 <b>Do'kon to'lovi</b> — #" + raqam + "\n"
-                 "Summa: <b>" + pul(s["umumiy"]) + "</b>\n"
-                 "Mijoz: <code>" + str(uid) + "</code>",
-              kb=tugmalar([[("✅ To'lovni tasdiqlash", "stol_" + raqam),
-                            ("❌ Bekor", "sbekor_" + raqam)]]))
+    yubor(uid, "✅ Chek qabul qilindi. Tekshirilgach buyurtmangiz jo'natiladi.", menyu=menyu(uid))
+    _adminlarga_chek(file_id, rasmmi,
+                     "💳 <b>Do'kon to'lovi</b> — #" + raqam + "\n"
+                     "Summa: <b>" + pul(s["umumiy"]) + "</b>\nMijoz: <code>" + str(uid) + "</code>",
+                     tugmalar([[("✅ To'lovni tasdiqlash", "stol_" + raqam),
+                                ("❌ Bekor", "sbekor_" + raqam)]]))
+    return True
 
 
 def tolov_tasdiq(raqam, tur):
@@ -1512,6 +1550,13 @@ def main():
         print("❗️ Token noto'g'ri yoki internet yo'q.")
         sys.exit(1)
     nom = me["result"].get("username")
+    import core as _core
+    _core.BOT_USERNAME = nom or ""
+    import ilova
+    try:
+        ilova.ishga_tushir()
+    except Exception as e:
+        log("Ilova serveri ishga tushmadi: " + str(e))
     log("Bot ishga tushdi: @" + str(nom) + " · adminlar: " + str(ADMINLAR))
     log("Baza: " + str(len(DATA["foydalanuvchilar"])) + " foydalanuvchi, "
         + str(len(DATA["buyurtmalar"])) + " tikish buyurtmasi, "
@@ -1538,7 +1583,8 @@ def main():
 
     while True:
         try:
-            zaxira.kunlik_tekshir()
+            with _core.QULF:
+                zaxira.kunlik_tekshir()
             r = api("getUpdates", offset=DATA["offset"] + 1, timeout=50,
                     allowed_updates=["message", "callback_query"])
             if not r or not r.get("ok"):
@@ -1547,10 +1593,11 @@ def main():
             for u in r["result"]:
                 DATA["offset"] = u["update_id"]
                 try:
-                    if "message" in u:
-                        xabar(u["message"])
-                    elif "callback_query" in u:
-                        tugma(u["callback_query"])
+                    with _core.QULF:  # ilova bilan bir vaqtda bazaga tegmaslik uchun
+                        if "message" in u:
+                            xabar(u["message"])
+                        elif "callback_query" in u:
+                            tugma(u["callback_query"])
                 except Exception:
                     log("Xatolik:\n" + traceback.format_exc())
                 saqla()
